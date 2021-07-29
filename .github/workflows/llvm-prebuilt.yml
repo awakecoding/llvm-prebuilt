@@ -23,38 +23,8 @@ jobs:
           - os: linux
             runner: ubuntu-18.04
 
-          - bits: 32
-            LLVM_BUILD_32_BITS: ON
-
           - bits: 64
             LLVM_BUILD_32_BITS: OFF
-
-          - arch: x86
-            bits: 32
-            os: linux
-            CMAKE_TOOLCHAIN_FILE: $GITHUB_WORKSPACE/llvm-nightlies/toolchains/x86-32-linux.cmake
-
-          - arch: x86
-            bits: 32
-            os: linux
-            multilib: g++-multilib
-
-          - arch: arm
-            bits: 32
-            os: linux
-            multilib: g++-arm-linux-gnueabihf g++-multilib-arm-linux-gnueabihf
-            CMAKE_TOOLCHAIN_FILE: $GITHUB_WORKSPACE/llvm-nightlies/toolchains/arm-32-linux.cmake
-
-          - arch: arm
-            bits: 64
-            os: linux
-            multilib: g++-aarch64-linux-gnu
-            CMAKE_TOOLCHAIN_FILE: $GITHUB_WORKSPACE/llvm-nightlies/toolchains/arm-64-linux.cmake
-
-          - arch: x86
-            bits: 32
-            os: windows
-            msvc: amd64_x86
 
           - arch: x86
             bits: 64
