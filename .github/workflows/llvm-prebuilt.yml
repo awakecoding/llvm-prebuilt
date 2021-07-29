@@ -1,0 +1,154 @@
+name: LLVM prebuilt
+on: workflow_dispatch
+jobs:
+  build:
+    name: LLVM ${{matrix.version}} [${{matrix.arch}}-${{matrix.bits}}-${{matrix.os}}]
+    runs-on: ${{matrix.runner}}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [ x86, arm ]
+        bits: [ 64 ]
+        os: [ windows, osx, linux ]
+        version: [ 12 ]
+
+        exclude:
+          - bits: 32
+            os: osx
+
+          - bits: 32
+            os: linux
+
+          - arch: arm
+            os: windows
+
+          - arch: arm
+            os: osx
+
+        include:
+          - version: 12
+            branch: release/12.x
+
+          - os: windows
+            runner: windows-2019
+          - os: osx
+            runner: macos-10.15
+          - os: linux
+            runner: ubuntu-18.04
+
+          - bits: 32
+            LLVM_BUILD_32_BITS: ON
+
+          - bits: 64
+            LLVM_BUILD_32_BITS: OFF
+
+          - arch: x86
+            bits: 32
+            os: linux
+            CMAKE_TOOLCHAIN_FILE: $GITHUB_WORKSPACE/llvm-nightlies/toolchains/x86-32-linux.cmake
+
+          - arch: x86
+            bits: 32
+            os: linux
+            multilib: g++-multilib
+
+          - arch: arm
+            bits: 32
+            os: linux
+            multilib: g++-arm-linux-gnueabihf g++-multilib-arm-linux-gnueabihf
+            CMAKE_TOOLCHAIN_FILE: $GITHUB_WORKSPACE/llvm-nightlies/toolchains/arm-32-linux.cmake
+
+          - arch: arm
+            bits: 64
+            os: linux
+            multilib: g++-aarch64-linux-gnu
+            CMAKE_TOOLCHAIN_FILE: $GITHUB_WORKSPACE/llvm-nightlies/toolchains/arm-64-linux.cmake
+
+          - arch: x86
+            bits: 32
+            os: windows
+            msvc: amd64_x86
+
+          - arch: x86
+            bits: 64
+            os: windows
+            msvc: amd64
+    steps:
+      - name: Configure Windows runner
+        if: runner.os == 'Windows'
+        run: choco install ninja
+
+      - name: Configure macOS runner
+        if: runner.os == 'macOS'
+        run: brew install ninja
+
+      - name: Configure Ubuntu runner
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt update
+          sudo apt install ninja-build ${{matrix.multilib}}
+
+      - name: Clone project
+        uses: actions/checkout@v2
+        with:
+          path: llvm-nightlies
+
+      - name: Clone LLVM ${{matrix.version}}
+        uses: actions/checkout@v2
+        with:
+          repository: llvm/llvm-project
+          ref: ${{matrix.branch}}
+          path: llvm-project
+
+      - name: Enable Developer Command Prompt
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{matrix.msvc}}
+
+      # Will need to run in two different developer command prompts if we
+      # want to build host tools for Windows via Ninja.
+      - name: Configure LLVM host tools
+        if: matrix.arch == 'arm'
+        run: "cmake -G Ninja -S llvm-project/llvm -B llvm-host
+                    -DCMAKE_BUILD_TYPE=Release
+                    -DLLVM_ENABLE_PROJECTS=clang
+                    -DLLVM_ENABLE_TERMINFO=OFF
+                    -DLLVM_ENABLE_LIBXML2=OFF"
+
+      # This (optional) step sets the LLVM_/CLANG_TABLEGEN environment variables
+      # which are read by the toolchain files. LLVM doesn't respect the usual
+      # convention of "empty is as good as unset" for these.
+      - name: Build LLVM host tools
+        if: matrix.arch == 'arm'
+        run: |
+          cmake --build llvm-host --target llvm-tblgen clang-tblgen
+          echo "LLVM_TABLEGEN=$PWD/llvm-host/bin/llvm-tblgen" >> $GITHUB_ENV
+          echo "CLANG_TABLEGEN=$PWD/llvm-host/bin/clang-tblgen" >> $GITHUB_ENV
+
+      - name: Configure LLVM
+        run: "cmake -G Ninja
+                    -DCMAKE_BUILD_TYPE=Release
+                    \"-DCMAKE_TOOLCHAIN_FILE=${{matrix.CMAKE_TOOLCHAIN_FILE}}\"
+                    \"-DLLVM_BUILD_32_BITS=${{matrix.LLVM_BUILD_32_BITS}}\"
+                    \"-DLLVM_TARGETS_TO_BUILD=X86;ARM;NVPTX;AArch64;Mips;Hexagon;PowerPC;WebAssembly\"
+                    \"-DLLVM_ENABLE_PROJECTS=clang;lld\"
+                    -DLLVM_ENABLE_ASSERTIONS=ON
+                    -DLLVM_ENABLE_RTTI=ON
+                    -DLLVM_ENABLE_EH=ON
+                    -DLLVM_ENABLE_LIBXML2=OFF
+                    -DLLVM_ENABLE_TERMINFO=OFF
+                    -S llvm-project/llvm -B llvm-build"
+
+      - name: Build LLVM
+        run: cmake --build llvm-build
+
+      - name: Install LLVM
+        run: cmake --install llvm-build --prefix llvm-install --strip
+
+      - name: Upload LLVM package
+        uses: actions/upload-artifact@v2
+        with:
+          name: llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.bits}}-${{matrix.os}}
+          path: llvm-install/
+
