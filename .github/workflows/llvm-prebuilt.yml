@@ -7,23 +7,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [ x86, arm ]
+        arch: [ x86 ]
         bits: [ 64 ]
         os: [ windows, osx, linux ]
         version: [ 12 ]
-
-        exclude:
-          - bits: 32
-            os: osx
-
-          - bits: 32
-            os: linux
-
-          - arch: arm
-            os: windows
-
-          - arch: arm
-            os: osx
 
         include:
           - version: 12
