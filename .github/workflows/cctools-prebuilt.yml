@@ -1,0 +1,70 @@
+name: cctools prebuilt
+on: workflow_dispatch
+jobs:
+  build:
+    name: cctools ${{matrix.version}} [${{matrix.arch}}-${{matrix.os}}]
+    runs-on: ${{matrix.runner}}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [ x86_64 ]
+        os: [ macos, linux ]
+
+        include:
+          - os: macos
+            runner: macos-10.15
+          - os: linux
+            runner: ubuntu-18.04
+    steps:
+      - name: Configure macOS runner
+        if: runner.os == 'macOS'
+        env:
+          CMAKE_OSX_DEPLOYMENT_TARGET: "10.12"
+        run: |
+          brew install git ninja
+
+      - name: Configure Linux runner
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt update
+          sudo apt install git xz-utils
+          sudo apt install libssl-dev libxml2-dev liblzma-dev libbz2-dev
+          sudo apt install ninja-build ${{matrix.multilib}}
+
+      - name: Build libxar
+        run: |
+          git clone https://github.com/tpoechtrager/xar.git
+          cd xar/xar
+          ./autogen.sh
+          ./configure --prefix=/tmp/cctools
+          cd ..
+
+      - name: Build libtapi
+        run: |
+          git clone https://github.com/tpoechtrager/apple-libtapi.git
+          cd apple-libtapi
+          INSTALLPREFIX=/tmp/cctools ./build.sh
+          ./install.sh
+          rm /tmp/cctools/lib/libtapi.so
+          mv /tmp/cctools/lib/libtapi.so.8svn /tmp/cctools/lib/libtapi.so
+          cd ..
+
+      - name: Build cctools
+        run: |
+          git clone https://github.com/tpoechtrager/cctools-port.git
+          cd cctools-port/cctools
+          ./configure --prefix=/tmp/cctools --with-libtapi=/tmp/cctools --with-libxar=/tmp/cctools --target=x86_64-apple-darwin11 --program-prefix=apple-
+          make
+          make install
+          cd ../..
+
+      - name: Package cctools
+        run: |
+          mv /tmp/cctools ./cctools-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
+          tar -cJf ctools-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz ctools-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
+
+      - name: Upload cctools package
+        uses: actions/upload-artifact@v2
+        with:
+          name: cctools-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
+          path: cctools-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz
