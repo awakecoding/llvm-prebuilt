@@ -89,17 +89,17 @@ jobs:
       - name: Package LLVM
         if: runner.os != 'Windows'
         run: |
-          mv llvm-install clang+llvm
-          tar -cJf clang+llvm.tar.xz clang+llvm
+          mv llvm-install clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
+          tar -cJf clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
 
       - name: Package LLVM
         if: runner.os == 'Windows'
         run: |
           ren llvm-install clang+llvm
-          cmd.exe /c "7z a -ttar -snl -so clang+llvm.tar clang+llvm/* | 7z a -si clang+llvm.tar.xz"
+          cmd.exe /c "7z a -ttar -snl -so clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}} | 7z a -si clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz"
 
       - name: Upload LLVM package
         uses: actions/upload-artifact@v2
         with:
           name: clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
-          path: clang+llvm.tar.xz
+          path: clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz
