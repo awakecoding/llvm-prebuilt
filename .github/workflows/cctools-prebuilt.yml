@@ -2,27 +2,18 @@ name: cctools prebuilt
 on: workflow_dispatch
 jobs:
   build:
-    name: cctools ${{matrix.version}} [${{matrix.arch}}-${{matrix.os}}]
+    name: cctools [${{matrix.arch}}-${{matrix.os}}]
     runs-on: ${{matrix.runner}}
     strategy:
       fail-fast: false
       matrix:
         arch: [ x86_64 ]
-        os: [ macos, linux ]
+        os: [ linux ]
 
         include:
-          - os: macos
-            runner: macos-10.15
           - os: linux
             runner: ubuntu-18.04
     steps:
-      - name: Configure macOS runner
-        if: runner.os == 'macOS'
-        env:
-          CMAKE_OSX_DEPLOYMENT_TARGET: "10.12"
-        run: |
-          brew install git ninja
-
       - name: Configure Linux runner
         if: runner.os == 'Linux'
         run: |
@@ -53,18 +44,18 @@ jobs:
         run: |
           git clone https://github.com/tpoechtrager/cctools-port.git
           cd cctools-port/cctools
-          ./configure --prefix=/tmp/cctools --with-libtapi=/tmp/cctools --with-libxar=/tmp/cctools --target=x86_64-apple-darwin11 --program-prefix=apple-
+          ./configure --prefix=/tmp/cctools --with-libtapi=/tmp/cctools --with-libxar=/tmp/cctools
           make
           make install
           cd ../..
 
       - name: Package cctools
         run: |
-          mv /tmp/cctools ./cctools-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
-          tar -cJf ctools-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz ctools-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
+          mv /tmp/cctools ./cctools-${{matrix.arch}}-${{matrix.os}}
+          tar -cJf cctools-${{matrix.arch}}-${{matrix.os}}.tar.xz cctools-${{matrix.arch}}-${{matrix.os}}
 
       - name: Upload cctools package
         uses: actions/upload-artifact@v2
         with:
-          name: cctools-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
-          path: cctools-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz
+          name: cctools-${{matrix.arch}}-${{matrix.os}}
+          path: cctools-${{matrix.arch}}-${{matrix.os}}.tar.xz
