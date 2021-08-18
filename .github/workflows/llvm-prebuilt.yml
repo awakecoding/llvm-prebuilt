@@ -2,14 +2,13 @@ name: LLVM prebuilt
 on: workflow_dispatch
 jobs:
   build:
-    name: LLVM ${{matrix.version}} [${{matrix.arch}}-${{matrix.bits}}-${{matrix.os}}]
+    name: LLVM ${{matrix.version}} [${{matrix.arch}}-${{matrix.os}}]
     runs-on: ${{matrix.runner}}
     strategy:
       fail-fast: false
       matrix:
-        arch: [ x86 ]
-        bits: [ 64 ]
-        os: [ windows, osx, linux ]
+        arch: [ x86_64 ]
+        os: [ windows, macos, linux ]
         version: [ 12 ]
 
         include:
@@ -18,31 +17,32 @@ jobs:
 
           - os: windows
             runner: windows-2019
-          - os: osx
+          - os: macos
             runner: macos-10.15
           - os: linux
             runner: ubuntu-18.04
 
-          - bits: 64
-            LLVM_BUILD_32_BITS: OFF
-
-          - arch: x86
-            bits: 64
+          - arch: x86_64
             os: windows
             msvc: amd64
     steps:
       - name: Configure Windows runner
         if: runner.os == 'Windows'
-        run: choco install ninja
+        run: |
+          choco install ninja 7zip
 
       - name: Configure macOS runner
         if: runner.os == 'macOS'
-        run: brew install ninja
+        env:
+          CMAKE_OSX_DEPLOYMENT_TARGET: "10.12"
+        run: |
+          brew install ninja
 
       - name: Configure Ubuntu runner
         if: runner.os == 'Linux'
         run: |
           sudo apt update
+          sudo apt install xz-utils libxml2-dev
           sudo apt install ninja-build ${{matrix.multilib}}
 
       - name: Clone project
@@ -63,37 +63,20 @@ jobs:
         with:
           arch: ${{matrix.msvc}}
 
-      # Will need to run in two different developer command prompts if we
-      # want to build host tools for Windows via Ninja.
-      - name: Configure LLVM host tools
-        if: matrix.arch == 'arm'
-        run: "cmake -G Ninja -S llvm-project/llvm -B llvm-host
-                    -DCMAKE_BUILD_TYPE=Release
-                    -DLLVM_ENABLE_PROJECTS=clang
-                    -DLLVM_ENABLE_TERMINFO=OFF
-                    -DLLVM_ENABLE_LIBXML2=OFF"
-
-      # This (optional) step sets the LLVM_/CLANG_TABLEGEN environment variables
-      # which are read by the toolchain files. LLVM doesn't respect the usual
-      # convention of "empty is as good as unset" for these.
-      - name: Build LLVM host tools
-        if: matrix.arch == 'arm'
-        run: |
-          cmake --build llvm-host --target llvm-tblgen clang-tblgen
-          echo "LLVM_TABLEGEN=$PWD/llvm-host/bin/llvm-tblgen" >> $GITHUB_ENV
-          echo "CLANG_TABLEGEN=$PWD/llvm-host/bin/clang-tblgen" >> $GITHUB_ENV
-
       - name: Configure LLVM
         run: "cmake -G Ninja
                     -DCMAKE_BUILD_TYPE=Release
                     \"-DCMAKE_TOOLCHAIN_FILE=${{matrix.CMAKE_TOOLCHAIN_FILE}}\"
-                    \"-DLLVM_BUILD_32_BITS=${{matrix.LLVM_BUILD_32_BITS}}\"
                     \"-DLLVM_TARGETS_TO_BUILD=X86;ARM;NVPTX;AArch64;Mips;Hexagon;PowerPC;WebAssembly\"
                     \"-DLLVM_ENABLE_PROJECTS=clang;lld\"
+                    -DLLVM_BUILD_32_BITS=OFF
+                    -DLLVM_INCLUDE_EXAMPLES=OFF
+                    -DLLVM_INCLUDE_TESTS=OFF
+                    -DLLVM_INCLUDE_DOCS=OFF
                     -DLLVM_ENABLE_ASSERTIONS=ON
                     -DLLVM_ENABLE_RTTI=ON
                     -DLLVM_ENABLE_EH=ON
-                    -DLLVM_ENABLE_LIBXML2=OFF
+                    -DLLVM_ENABLE_LIBXML2=ON
                     -DLLVM_ENABLE_TERMINFO=OFF
                     -S llvm-project/llvm -B llvm-build"
 
@@ -103,9 +86,20 @@ jobs:
       - name: Install LLVM
         run: cmake --install llvm-build --prefix llvm-install --strip
 
+      - name: Package LLVM
+        if: runner.os != 'Windows'
+        run: |
+          mv llvm-install clang+llvm
+          tar -cJf clang+llvm.tar.xz clang+llvm
+
+      - name: Package LLVM
+        if: runner.os == 'Windows'
+        run: |
+          ren llvm-install clang+llvm
+          cmd.exe /c "7z a -ttar -snl -so clang+llvm.tar clang+llvm/* | 7z a -si clang+llvm.tar.xz"
+
       - name: Upload LLVM package
         uses: actions/upload-artifact@v2
         with:
-          name: llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.bits}}-${{matrix.os}}
-          path: llvm-install/
-
+          name: clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
+          path: clang+llvm.tar.xz
