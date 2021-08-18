@@ -5,7 +5,7 @@ jobs:
     name: LLVM ${{matrix.version}} [${{matrix.arch}}-${{matrix.os}}]
     runs-on: ${{matrix.runner}}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         arch: [ x86_64 ]
         os: [ windows, macos, linux ]
@@ -90,7 +90,7 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           mv llvm-install clang+llvm
-          tar -cfJ clang+llvm.tar.xz clang+llvm
+          tar -cJf clang+llvm.tar.xz clang+llvm
 
       - name: Package LLVM
         if: runner.os == 'Windows'
