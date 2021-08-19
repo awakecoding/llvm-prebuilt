@@ -95,7 +95,7 @@ jobs:
       - name: Package LLVM
         if: runner.os == 'Windows'
         run: |
-          ren llvm-install clang+llvm
+          ren llvm-install clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
           cmd.exe /c "7z a -ttar -snl -so clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}} | 7z a -si clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz"
 
       - name: Upload LLVM package
