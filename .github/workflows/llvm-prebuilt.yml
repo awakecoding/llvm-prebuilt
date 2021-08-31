@@ -61,11 +61,6 @@ jobs:
           sudo apt install xz-utils libxml2-dev
           sudo apt install ninja-build
 
-      - name: Configure Ubuntu aarch64
-        if: runner.os == 'Linux' && runner.arch == 'aarch64'
-        run: |
-          sudo apt install g++-aarch64-linux-gnu
-
       - name: Clone project
         uses: actions/checkout@v2
         with:
