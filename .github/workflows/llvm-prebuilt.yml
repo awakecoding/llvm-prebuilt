@@ -81,7 +81,7 @@ jobs:
         run: "cmake -G Ninja
                     -DCMAKE_BUILD_TYPE=Release
                     \"-DCMAKE_TOOLCHAIN_FILE=${{matrix.CMAKE_TOOLCHAIN_FILE}}\"
-                    \"-DLLVM_TARGETS_TO_BUILD=ALL\"
+                    \"-DLLVM_TARGETS_TO_BUILD=X86;ARM;NVPTX;AArch64;Mips;Hexagon;PowerPC;WebAssembly\"
                     \"-DLLVM_ENABLE_PROJECTS=clang;lld\"
                     -DLLVM_BUILD_32_BITS=OFF
                     -DLLVM_INCLUDE_EXAMPLES=OFF
