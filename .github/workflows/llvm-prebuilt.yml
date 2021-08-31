@@ -13,8 +13,6 @@ jobs:
 
         exclude:
           - arch: aarch64
-            os: windows
-          - arch: aarch64
             os: linux
 
         include:
@@ -33,7 +31,7 @@ jobs:
             msvc: amd64
           - arch: aarch64
             os: windows
-            msvc: arm64
+            msvc: amd64_arm64
 
           - arch: x86_64
             os: macos
