@@ -7,12 +7,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [ x86_64 ]
+        arch: [ x86_64, aarch64 ]
         os: [ windows, macos, linux ]
-        version: [ 12 ]
+        version: [ 12.0.1 ]
+
+        exclude:
+          - arch: aarch64
+            os: windows
+          - arch: aarch64
+            os: linux
 
         include:
-          - version: 12
+          - version: 12.0.1
             branch: release/12.x
 
           - os: windows
@@ -25,6 +31,16 @@ jobs:
           - arch: x86_64
             os: windows
             msvc: amd64
+          - arch: aarch64
+            os: windows
+            msvc: arm64
+
+          - arch: x86_64
+            os: macos
+            osx_arch: x86_64
+          - arch: aarch64
+            os: macos
+            osx_arch: arm64
     steps:
       - name: Configure Windows runner
         if: runner.os == 'Windows'
@@ -33,17 +49,22 @@ jobs:
 
       - name: Configure macOS runner
         if: runner.os == 'macOS'
-        env:
-          CMAKE_OSX_DEPLOYMENT_TARGET: "10.12"
         run: |
           brew install ninja
+          echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
+          echo "CMAKE_OSX_ARCHITECTURES=${{matrix.osx_arch}}" >> $GITHUB_ENV
 
       - name: Configure Ubuntu runner
         if: runner.os == 'Linux'
         run: |
           sudo apt update
           sudo apt install xz-utils libxml2-dev
-          sudo apt install ninja-build ${{matrix.multilib}}
+          sudo apt install ninja-build
+
+      - name: Configure Ubuntu aarch64
+        if: runner.os == 'Linux' && arch == 'aarch64'
+        run: |
+          sudo apt install g++-aarch64-linux-gnu
 
       - name: Clone project
         uses: actions/checkout@v2
@@ -67,7 +88,7 @@ jobs:
         run: "cmake -G Ninja
                     -DCMAKE_BUILD_TYPE=Release
                     \"-DCMAKE_TOOLCHAIN_FILE=${{matrix.CMAKE_TOOLCHAIN_FILE}}\"
-                    \"-DLLVM_TARGETS_TO_BUILD=X86;ARM;NVPTX;AArch64;Mips;Hexagon;PowerPC;WebAssembly\"
+                    \"-DLLVM_TARGETS_TO_BUILD=ALL\"
                     \"-DLLVM_ENABLE_PROJECTS=clang;lld\"
                     -DLLVM_BUILD_32_BITS=OFF
                     -DLLVM_INCLUDE_EXAMPLES=OFF
