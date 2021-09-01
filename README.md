@@ -1,12 +1,8 @@
-# LLVM Nightlies ![build status badge](https://github.com/alexreinking/llvm-nightlies/workflows/LLVM%20Nightlies/badge.svg)
+# LLVM prebuilt
 
-This is a stub repo to make nightly LLVM packages via GitHub Actions.
-
-For each of LLVM 10, 11, 12, and `main` branch, it builds binaries for the following architectures:
+This is a repository to create prebuilt clang+llvm distributions for major operating systems and processor architectures. It can be used to create your own custom builds, or you can download the [prebuilt packages](https://github.com/awakecoding/llvm-prebuilt/releases).
 
 Arch                  | Windows            | macOS                    | Linux
 ----------------------|--------------------|--------------------------|--------------------
-x86 (32-bit)          | :heavy_check_mark: | :heavy_multiplication_x: | :heavy_check_mark: 
-x86 (64-bit)          | :heavy_check_mark: | :heavy_check_mark:       | :heavy_check_mark: 
-ARM (32-bit, hf)      | :x:                | :heavy_multiplication_x: | :heavy_check_mark: 
-ARM (64-bit, aarch64) | :x:                | :x:                      | :heavy_check_mark: 
+x86_64                | :heavy_check_mark: | :heavy_check_mark:       | :heavy_check_mark: 
+aarch64               | :heavy_check_mark: | :heavy_check_mark:       | :heavy_check_mark: 
