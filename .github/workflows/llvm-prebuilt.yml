@@ -28,6 +28,7 @@ jobs:
           - arch: aarch64
             os: windows
             msvc: amd64_arm64
+            CMAKE_TOOLCHAIN_FILE: $GITHUB_WORKSPACE/llvm-prebuilt/toolchains/aarch64-windows.cmake
 
           - arch: x86_64
             os: macos
@@ -59,6 +60,11 @@ jobs:
           sudo apt install xz-utils libxml2-dev
           sudo apt install ninja-build
           sudo apt install g++-aarch64-linux-gnu
+          mkdir libxml2-dev-arm64 && cd libxml2-dev-arm64
+          wget http://ports.ubuntu.com/pool/main/libx/libxml2/libxml2-dev_2.9.4+dfsg1-6.1ubuntu1.4_arm64.deb
+          ar -x libxml2-dev_2.9.4+dfsg1-6.1ubuntu1.4_arm64.deb
+          tar -xf data.tar.xz
+          sudo cp -R ./usr/lib/aarch64-linux-gnu/ /usr/lib/aarch64-linux-gnu
 
       - name: Clone project
         uses: actions/checkout@v2
