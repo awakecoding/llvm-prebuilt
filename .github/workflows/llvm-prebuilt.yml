@@ -35,11 +35,11 @@ jobs:
           - arch: aarch64
             os: macos
             osx_arch: arm64
-            CMAKE_TOOLCHAIN_FILE: $GITHUB_WORKSPACE/llvm-nightlies/toolchains/aarch64-linux.cmake
+            CMAKE_TOOLCHAIN_FILE: $GITHUB_WORKSPACE/llvm-prebuilt/toolchains/aarch64-macos.cmake
 
           - arch: aarch64
             os: linux
-            CMAKE_TOOLCHAIN_FILE: $GITHUB_WORKSPACE/llvm-nightlies/toolchains/aarch64-linux.cmake
+            CMAKE_TOOLCHAIN_FILE: $GITHUB_WORKSPACE/llvm-prebuilt/toolchains/aarch64-linux.cmake
     steps:
       - name: Configure Windows runner
         if: runner.os == 'Windows'
