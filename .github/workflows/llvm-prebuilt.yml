@@ -11,10 +11,6 @@ jobs:
         os: [ windows, macos, linux ]
         version: [ 12.0.1 ]
 
-        exclude:
-          - arch: aarch64
-            os: linux
-
         include:
           - version: 12.0.1
             branch: release/12.x
@@ -39,6 +35,11 @@ jobs:
           - arch: aarch64
             os: macos
             osx_arch: arm64
+            CMAKE_TOOLCHAIN_FILE: $GITHUB_WORKSPACE/llvm-nightlies/toolchains/aarch64-linux.cmake
+
+          - arch: aarch64
+            os: linux
+            CMAKE_TOOLCHAIN_FILE: $GITHUB_WORKSPACE/llvm-nightlies/toolchains/aarch64-linux.cmake
     steps:
       - name: Configure Windows runner
         if: runner.os == 'Windows'
@@ -50,7 +51,6 @@ jobs:
         run: |
           brew install ninja
           echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
-          echo "CMAKE_OSX_ARCHITECTURES=${{matrix.osx_arch}}" >> $GITHUB_ENV
 
       - name: Configure Ubuntu runner
         if: runner.os == 'Linux'
@@ -62,7 +62,7 @@ jobs:
       - name: Clone project
         uses: actions/checkout@v2
         with:
-          path: llvm-nightlies
+          path: llvm-prebuilt
 
       - name: Clone LLVM ${{matrix.version}}
         uses: actions/checkout@v2
@@ -71,7 +71,36 @@ jobs:
           ref: ${{matrix.branch}}
           path: llvm-project
 
-      - name: Enable Developer Command Prompt
+      - name: Enable Windows host environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+
+      - name: Configure LLVM host tools
+        if: matrix.arch == 'aarch64'
+        run: "cmake -G Ninja -S llvm-project/llvm -B llvm-host
+                    -DCMAKE_BUILD_TYPE=Release
+                    -DLLVM_ENABLE_PROJECTS=clang
+                    -DLLVM_INCLUDE_EXAMPLES=OFF
+                    -DLLVM_INCLUDE_TESTS=OFF
+                    -DLLVM_INCLUDE_DOCS=OFF
+                    -DLLVM_ENABLE_TERMINFO=OFF
+                    -DLLVM_ENABLE_LIBXML2=OFF"
+
+      - name: Build LLVM host tools
+        if: matrix.arch == 'aarch64'
+        run: |
+          cmake --build llvm-host --target llvm-tblgen clang-tblgen
+          echo "LLVM_TABLEGEN=$PWD/llvm-host/bin/llvm-tblgen" >> $GITHUB_ENV
+          echo "CLANG_TABLEGEN=$PWD/llvm-host/bin/clang-tblgen" >> $GITHUB_ENV
+
+      - name: Enable macOS target environment
+        if: runner.os == 'macOS'
+        run: |
+          echo "CMAKE_OSX_ARCHITECTURES=${{matrix.osx_arch}}" >> $GITHUB_ENV
+
+      - name: Enable Windows target environment
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
         with:
