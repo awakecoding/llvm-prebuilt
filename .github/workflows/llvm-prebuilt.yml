@@ -96,8 +96,10 @@ jobs:
         shell: pwsh
         run: |
           cmake --build llvm-host --target llvm-tblgen clang-tblgen
-          echo "LLVM_TABLEGEN=$Env:GITHUB_WORKSPACE/llvm-host/bin/llvm-tblgen" >> $Env:GITHUB_ENV
-          echo "CLANG_TABLEGEN=$Env:GITHUB_WORKSPACE/llvm-host/bin/clang-tblgen" >> $Env:GITHUB_ENV
+          $HostBinPath = "$Env:GITHUB_WORKSPACE/llvm-host/bin"
+          $ExeExt = if ($IsWindows) { ".exe" } else { "" }
+          echo "LLVM_TABLEGEN=$HostBinPath/llvm-tblgen$ExeExt" >> $Env:GITHUB_ENV
+          echo "CLANG_TABLEGEN=$HostBinPath/clang-tblgen$ExeExt" >> $Env:GITHUB_ENV
 
       - name: Set CMake toolchain file
         shell: pwsh
