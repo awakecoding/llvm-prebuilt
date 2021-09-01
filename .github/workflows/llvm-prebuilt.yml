@@ -82,28 +82,27 @@ jobs:
           arch: amd64
 
       - name: Configure LLVM host tools
-        if: matrix.arch == 'aarch64'
         run: "cmake -G Ninja -S llvm-project/llvm -B llvm-host
                     -DCMAKE_BUILD_TYPE=Release
                     -DLLVM_ENABLE_PROJECTS=clang
                     -DLLVM_INCLUDE_EXAMPLES=OFF
                     -DLLVM_INCLUDE_TESTS=OFF
                     -DLLVM_INCLUDE_DOCS=OFF
+                    -DLLVM_ENABLE_LIBXML2=OFF
                     -DLLVM_ENABLE_TERMINFO=OFF
-                    -DLLVM_ENABLE_LIBXML2=OFF"
+                    -Wno-dev"
 
       - name: Build LLVM host tools
-        if: matrix.arch == 'aarch64'
         shell: pwsh
         run: |
           cmake --build llvm-host --target llvm-tblgen clang-tblgen
-          echo "LLVM_TABLEGEN=$PWD/llvm-host/bin/llvm-tblgen" >> $Env:GITHUB_ENV
-          echo "CLANG_TABLEGEN=$PWD/llvm-host/bin/clang-tblgen" >> $Env:GITHUB_ENV
+          echo "LLVM_TABLEGEN=$Env:GITHUB_WORKSPACE/llvm-host/bin/llvm-tblgen" >> $Env:GITHUB_ENV
+          echo "CLANG_TABLEGEN=$Env:GITHUB_WORKSPACE/llvm-host/bin/clang-tblgen" >> $Env:GITHUB_ENV
 
       - name: Set CMake toolchain file
         shell: pwsh
         run: |
-          $ToolchainPath = "$PWD/llvm-prebuilt/toolchains"
+          $ToolchainPath = "$Env:GITHUB_WORKSPACE/llvm-prebuilt/toolchains"
           $ToolchainName = "${{matrix.arch}}-${{matrix.os}}"
           echo "CMAKE_TOOLCHAIN_FILE=$ToolchainPath/$ToolchainName.cmake" >> $Env:GITHUB_ENV
 
@@ -114,7 +113,7 @@ jobs:
           arch: ${{matrix.msvc}}
 
       - name: Configure LLVM
-        run: "cmake -G Ninja
+        run: "cmake -G Ninja -S llvm-project/llvm -B llvm-build
                     -DCMAKE_BUILD_TYPE=Release
                     \"-DLLVM_TARGETS_TO_BUILD=X86;ARM;NVPTX;AArch64;Mips;Hexagon;PowerPC;WebAssembly\"
                     \"-DLLVM_ENABLE_PROJECTS=clang;lld\"
@@ -127,7 +126,7 @@ jobs:
                     -DLLVM_ENABLE_EH=ON
                     -DLLVM_ENABLE_LIBXML2=ON
                     -DLLVM_ENABLE_TERMINFO=OFF
-                    -S llvm-project/llvm -B llvm-build"
+                    -Wno-dev"
 
       - name: Build LLVM
         run: cmake --build llvm-build
