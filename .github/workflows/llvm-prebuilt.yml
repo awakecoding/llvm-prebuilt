@@ -7,12 +7,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [ x86_64 ]
+        arch: [ x86_64, aarch64 ]
         os: [ windows, macos, linux ]
-        version: [ 12 ]
+        version: [ 12.0.1 ]
 
         include:
-          - version: 12
+          - version: 12.0.1
             branch: release/12.x
 
           - os: windows
@@ -25,6 +25,19 @@ jobs:
           - arch: x86_64
             os: windows
             msvc: amd64
+          - arch: aarch64
+            os: windows
+            msvc: amd64_arm64
+
+          - arch: x86_64
+            os: macos
+            osx_arch: x86_64
+          - arch: aarch64
+            os: macos
+            osx_arch: arm64
+
+          - arch: aarch64
+            os: linux
     steps:
       - name: Configure Windows runner
         if: runner.os == 'Windows'
@@ -33,22 +46,27 @@ jobs:
 
       - name: Configure macOS runner
         if: runner.os == 'macOS'
-        env:
-          CMAKE_OSX_DEPLOYMENT_TARGET: "10.12"
         run: |
           brew install ninja
+          echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
 
       - name: Configure Ubuntu runner
         if: runner.os == 'Linux'
         run: |
           sudo apt update
           sudo apt install xz-utils libxml2-dev
-          sudo apt install ninja-build ${{matrix.multilib}}
+          sudo apt install ninja-build
+          sudo apt install g++-aarch64-linux-gnu
+          mkdir libxml2-dev-arm64 && cd libxml2-dev-arm64
+          wget http://ports.ubuntu.com/pool/main/libx/libxml2/libxml2-dev_2.9.4+dfsg1-6.1ubuntu1.4_arm64.deb
+          ar -x libxml2-dev_2.9.4+dfsg1-6.1ubuntu1.4_arm64.deb
+          tar -xf data.tar.xz
+          sudo cp -R ./usr/lib/aarch64-linux-gnu/ /usr/lib/aarch64-linux-gnu
 
       - name: Clone project
         uses: actions/checkout@v2
         with:
-          path: llvm-nightlies
+          path: llvm-prebuilt
 
       - name: Clone LLVM ${{matrix.version}}
         uses: actions/checkout@v2
@@ -57,19 +75,53 @@ jobs:
           ref: ${{matrix.branch}}
           path: llvm-project
 
-      - name: Enable Developer Command Prompt
+      - name: Enable Windows host environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+
+      - name: Configure LLVM host tools
+        run: "cmake -G Ninja -S llvm-project/llvm -B llvm-host
+                    -DCMAKE_BUILD_TYPE=Release
+                    -DLLVM_ENABLE_PROJECTS=clang
+                    -DLLVM_INCLUDE_EXAMPLES=OFF
+                    -DLLVM_INCLUDE_TESTS=OFF
+                    -DLLVM_INCLUDE_DOCS=OFF
+                    -DLLVM_ENABLE_LIBXML2=OFF
+                    -DLLVM_ENABLE_TERMINFO=OFF
+                    -Wno-dev"
+
+      - name: Build LLVM host tools
+        shell: pwsh
+        run: |
+          cmake --build llvm-host --target llvm-tblgen clang-tblgen llvm-config
+          $HostBinPath = "$Env:GITHUB_WORKSPACE/llvm-host/bin"
+          $ExeExt = if ($IsWindows) { ".exe" } else { "" }
+          echo "LLVM_TABLEGEN=$HostBinPath/llvm-tblgen$ExeExt" >> $Env:GITHUB_ENV
+          echo "CLANG_TABLEGEN=$HostBinPath/clang-tblgen$ExeExt" >> $Env:GITHUB_ENV
+          echo "LLVM_CONFIG_PATH=$HostBinPath/llvm-config$ExeExt" >> $Env:GITHUB_ENV
+
+      - name: Set CMake toolchain file
+        shell: pwsh
+        run: |
+          $ToolchainPath = "$Env:GITHUB_WORKSPACE/llvm-prebuilt/toolchains"
+          $ToolchainName = "${{matrix.arch}}-${{matrix.os}}"
+          echo "CMAKE_TOOLCHAIN_FILE=$ToolchainPath/$ToolchainName.cmake" >> $Env:GITHUB_ENV
+
+      - name: Enable Windows target environment
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: ${{matrix.msvc}}
 
       - name: Configure LLVM
-        run: "cmake -G Ninja
+        run: "cmake -G Ninja -S llvm-project/llvm -B llvm-build
                     -DCMAKE_BUILD_TYPE=Release
-                    \"-DCMAKE_TOOLCHAIN_FILE=${{matrix.CMAKE_TOOLCHAIN_FILE}}\"
                     \"-DLLVM_TARGETS_TO_BUILD=X86;ARM;NVPTX;AArch64;Mips;Hexagon;PowerPC;WebAssembly\"
                     \"-DLLVM_ENABLE_PROJECTS=clang;lld\"
                     -DLLVM_BUILD_32_BITS=OFF
+                    -DLLVM_BUILD_LLVM_C_DYLIB=OFF
                     -DLLVM_INCLUDE_EXAMPLES=OFF
                     -DLLVM_INCLUDE_TESTS=OFF
                     -DLLVM_INCLUDE_DOCS=OFF
@@ -78,7 +130,8 @@ jobs:
                     -DLLVM_ENABLE_EH=ON
                     -DLLVM_ENABLE_LIBXML2=ON
                     -DLLVM_ENABLE_TERMINFO=OFF
-                    -S llvm-project/llvm -B llvm-build"
+                    -DLLVM_INSTALL_TOOLCHAIN_ONLY=ON
+                    -Wno-dev"
 
       - name: Build LLVM
         run: cmake --build llvm-build
