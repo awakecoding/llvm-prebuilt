@@ -18,6 +18,17 @@ if(DEFINED ENV{LLVM_CONFIG_PATH})
     message(STATUS "LLVM_CONFIG_PATH: ${LLVM_CONFIG_PATH}")
 endif()
 
+set(PACKAGE_VENDOR "awakecoding" CACHE STRING "")
+
+set(LLVM_TARGETS_TO_BUILD "X86;ARM;AArch64;Mips;PowerPC;RISCV;WebAssembly" CACHE STRING "")
+
+set(LLVM_ENABLE_PROJECTS "clang;clang-tools-extra;lld" CACHE STRING "")
+set(LLVM_ENABLE_RUNTIMES "compiler-rt;libcxx;libcxxabi" CACHE STRING "")
+
+if(WIN32)
+    set(LLVM_USE_CRT_RELEASE "MT" CACHE STRING "")
+endif()
+
 set(LLVM_INSTALL_TOOLCHAIN_ONLY ON CACHE BOOL "")
 
 set(LLVM_TOOLCHAIN_TOOLS

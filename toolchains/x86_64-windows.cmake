@@ -2,6 +2,4 @@ set(CMAKE_SYSTEM_PROCESSOR "x64")
 
 set(CMAKE_CROSSCOMPILING TRUE)
 
-set(LLVM_USE_CRT_RELEASE MT)
-
 include("${CMAKE_CURRENT_LIST_DIR}/llvm-distribution.cmake")

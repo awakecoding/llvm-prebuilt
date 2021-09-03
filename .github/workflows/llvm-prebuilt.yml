@@ -119,8 +119,6 @@ jobs:
       - name: Configure LLVM
         run: "cmake -G Ninja -S llvm-project/llvm -B llvm-build
                     -DCMAKE_BUILD_TYPE=Release
-                    \"-DLLVM_TARGETS_TO_BUILD=X86;ARM;NVPTX;AArch64;Mips;Hexagon;PowerPC;WebAssembly\"
-                    \"-DLLVM_ENABLE_PROJECTS=clang;lld\"
                     -DLLVM_BUILD_32_BITS=OFF
                     -DLLVM_BUILD_LLVM_C_DYLIB=OFF
                     -DLLVM_INCLUDE_EXAMPLES=OFF
