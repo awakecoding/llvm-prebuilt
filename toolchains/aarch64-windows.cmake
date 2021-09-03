@@ -5,4 +5,4 @@ set(CMAKE_CROSSCOMPILING TRUE)
 set(LLVM_TARGET_ARCH AArch64)
 set(LLVM_USE_CRT_RELEASE MT)
 
-include(llvm-distribution.cmake)
+include("${CMAKE_CURRENT_LIST_DIR}/llvm-distribution.cmake")
