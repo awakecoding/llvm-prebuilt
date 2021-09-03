@@ -23,7 +23,7 @@ set(PACKAGE_VENDOR "awakecoding" CACHE STRING "")
 set(LLVM_TARGETS_TO_BUILD "X86;ARM;AArch64;Mips;PowerPC;RISCV;WebAssembly" CACHE STRING "")
 
 set(LLVM_ENABLE_PROJECTS "clang;clang-tools-extra;lld" CACHE STRING "")
-set(LLVM_ENABLE_RUNTIMES "compiler-rt;libcxx;libcxxabi" CACHE STRING "")
+set(LLVM_ENABLE_RUNTIMES "compiler-rt;libunwind;libcxx;libcxxabi" CACHE STRING "")
 
 if(WIN32)
     set(LLVM_USE_CRT_RELEASE "MT" CACHE STRING "")
@@ -53,7 +53,6 @@ set(LLVM_TOOLCHAIN_TOOLS
     llvm-nm
     llvm-objcopy
     llvm-objdump
-    llvm-otool
     llvm-pdbutil
     llvm-profdata
     llvm-rc
