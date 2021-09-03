@@ -102,12 +102,13 @@ jobs:
           echo "CLANG_TABLEGEN=$HostBinPath/clang-tblgen$ExeExt" >> $Env:GITHUB_ENV
           echo "LLVM_CONFIG_PATH=$HostBinPath/llvm-config$ExeExt" >> $Env:GITHUB_ENV
 
-      - name: Set CMake toolchain file
+      - name: Set CMake environment
         shell: pwsh
         run: |
           $ToolchainPath = "$Env:GITHUB_WORKSPACE/llvm-prebuilt/toolchains"
           $ToolchainName = "${{matrix.arch}}-${{matrix.os}}"
           echo "CMAKE_TOOLCHAIN_FILE=$ToolchainPath/$ToolchainName.cmake" >> $Env:GITHUB_ENV
+          echo "CMAKE_INSTALL_PREFIX=$Env:GITHUB_WORKSPACE/llvm-install" >> $Env:GITHUB_ENV
 
       - name: Enable Windows target environment
         if: runner.os == 'Windows'
@@ -130,14 +131,13 @@ jobs:
                     -DLLVM_ENABLE_EH=ON
                     -DLLVM_ENABLE_LIBXML2=ON
                     -DLLVM_ENABLE_TERMINFO=OFF
-                    -DLLVM_INSTALL_TOOLCHAIN_ONLY=ON
                     -Wno-dev"
 
       - name: Build LLVM
         run: cmake --build llvm-build
 
       - name: Install LLVM
-        run: cmake --install llvm-build --prefix llvm-install --strip
+        run: cmake --build llvm-build --target install-distribution
 
       - name: Package LLVM
         if: runner.os != 'Windows'
