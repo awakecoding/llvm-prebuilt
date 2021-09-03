@@ -85,11 +85,6 @@ jobs:
         run: "cmake -G Ninja -S llvm-project/llvm -B llvm-host
                     -DCMAKE_BUILD_TYPE=Release
                     -DLLVM_ENABLE_PROJECTS=clang
-                    -DLLVM_INCLUDE_EXAMPLES=OFF
-                    -DLLVM_INCLUDE_TESTS=OFF
-                    -DLLVM_INCLUDE_DOCS=OFF
-                    -DLLVM_ENABLE_LIBXML2=OFF
-                    -DLLVM_ENABLE_TERMINFO=OFF
                     -Wno-dev"
 
       - name: Build LLVM host tools
@@ -117,19 +112,7 @@ jobs:
           arch: ${{matrix.msvc}}
 
       - name: Configure LLVM
-        run: "cmake -G Ninja -S llvm-project/llvm -B llvm-build
-                    -DCMAKE_BUILD_TYPE=Release
-                    -DLLVM_BUILD_32_BITS=OFF
-                    -DLLVM_BUILD_LLVM_C_DYLIB=OFF
-                    -DLLVM_INCLUDE_EXAMPLES=OFF
-                    -DLLVM_INCLUDE_TESTS=OFF
-                    -DLLVM_INCLUDE_DOCS=OFF
-                    -DLLVM_ENABLE_ASSERTIONS=ON
-                    -DLLVM_ENABLE_RTTI=ON
-                    -DLLVM_ENABLE_EH=ON
-                    -DLLVM_ENABLE_LIBXML2=ON
-                    -DLLVM_ENABLE_TERMINFO=OFF
-                    -Wno-dev"
+        run: "cmake -G Ninja -S llvm-project/llvm -B llvm-build -Wno-dev"
 
       - name: Build LLVM
         run: cmake --build llvm-build
