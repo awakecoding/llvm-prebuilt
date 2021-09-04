@@ -90,7 +90,6 @@ set(LLVM_DISTRIBUTION_COMPONENTS
     clang
     LTO
     clang-format
-    builtins
     runtimes
     ${LLVM_TOOLCHAIN_TOOLS}
     CACHE STRING "")
