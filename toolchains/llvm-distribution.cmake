@@ -87,9 +87,9 @@ set(LLVM_TOOLCHAIN_TOOLS
     CACHE STRING "")
 
 set(LLVM_DEVELOPMENT_COMPONENTS
-    clang-cmake-exports
-    clang-development-cmake-exports
     clang-headers
+    clang-libraries
+    clang-cmake-exports
     CACHE STRING "")
 
 set(LLVM_DISTRIBUTION_COMPONENTS
