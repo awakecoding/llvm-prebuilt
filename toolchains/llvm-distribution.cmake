@@ -51,39 +51,47 @@ set(CMAKE_BUILD_TYPE Release CACHE STRING "")
 
 set(LLVM_INSTALL_TOOLCHAIN_ONLY OFF CACHE BOOL "")
 
-set(LLVM_TOOLCHAIN_TOOLS
-    dsymutil
-    llvm-ar
-    llvm-bitcode-strip
-    llvm-cat
-    llvm-cov
-    llvm-config
-    llvm-cxxfilt
-    llvm-diff
-    llvm-dlltool
-    llvm-dwarfdump
-    llvm-dwp
-    llvm-ifs
-    llvm-install-name-tool
-    llvm-gsymutil
-    llvm-lib
-    llvm-libtool-darwin
+set(LLVM_CCTOOLS_COMPONENTS
     llvm-lipo
-    llvm-mt
+    llvm-libtool-darwin
+    llvm-install-name-tool
+    llvm-bitcode-strip
+    CACHE STRING "")
+
+set(LLVM_BINUTILS_COMPONENTS
+    llvm-ar
+    llvm-cxxfilt
+    llvm-dwp
     llvm-nm
     llvm-objcopy
     llvm-objdump
-    llvm-pdbutil
-    llvm-profdata
     llvm-rc
-    llvm-ranlib
-    llvm-readelf
     llvm-readobj
     llvm-size
     llvm-strings
-    llvm-strip
     llvm-symbolizer
+    CACHE STRING "")
+
+set(LLVM_TOOLCHAIN_TOOLS
+    dsymutil
+    llvm-cat
+    llvm-cov
+    llvm-config
+    llvm-diff
+    llvm-dlltool
+    llvm-dwarfdump
+    llvm-ifs
+    llvm-gsymutil
+    llvm-lib
+    llvm-mt
+    llvm-pdbutil
+    llvm-profdata
+    llvm-ranlib
+    llvm-readelf
+    llvm-strip
     llvm-xray
+    ${LLVM_CCTOOLS_COMPONENTS}
+    ${LLVM_BINUTILS_COMPONENTS}
     CACHE STRING "")
 
 set(LLVM_DEVELOPMENT_COMPONENTS
@@ -101,6 +109,7 @@ set(LLVM_DISTRIBUTION_COMPONENTS
     lld
     LTO
     clang-format
+    clang-tidy
     ${LLVM_DEVELOPMENT_COMPONENTS}
     ${LLVM_TOOLCHAIN_TOOLS}
     CACHE STRING "")
