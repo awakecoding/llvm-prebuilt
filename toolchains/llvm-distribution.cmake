@@ -87,9 +87,15 @@ set(LLVM_TOOLCHAIN_TOOLS
     CACHE STRING "")
 
 set(LLVM_DEVELOPMENT_COMPONENTS
+    llvm-headers
+    llvm-libraries
+    CACHE STRING "")
+
+set(CLANG_DEVELOPMENT_COMPONENTS
     clang-headers
     clang-libraries
     clang-cmake-exports
+    clang-resource-headers
     CACHE STRING "")
 
 set(LLVM_DISTRIBUTION_COMPONENTS
@@ -98,5 +104,6 @@ set(LLVM_DISTRIBUTION_COMPONENTS
     LTO
     clang-format
     ${LLVM_DEVELOPMENT_COMPONENTS}
+    ${CLANG_DEVELOPMENT_COMPONENTS}
     ${LLVM_TOOLCHAIN_TOOLS}
     CACHE STRING "")
