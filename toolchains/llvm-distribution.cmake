@@ -23,7 +23,7 @@ set(PACKAGE_VENDOR "awakecoding" CACHE STRING "")
 set(LLVM_TARGETS_TO_BUILD "X86;ARM;AArch64;Mips;PowerPC;RISCV;WebAssembly" CACHE STRING "")
 
 set(LLVM_ENABLE_PROJECTS "clang;clang-tools-extra;llvm;lld" CACHE STRING "")
-set(LLVM_ENABLE_RUNTIMES "compiler-rt" CACHE STRING "")
+set(LLVM_ENABLE_RUNTIMES "" CACHE STRING "")
 
 set(LLVM_ENABLE_BACKTRACES OFF CACHE BOOL "")
 set(LLVM_ENABLE_DIA_SDK OFF CACHE BOOL "")
@@ -92,6 +92,6 @@ set(LLVM_DISTRIBUTION_COMPONENTS
     LTO
     clang-format
     clang-libraries
-    runtimes
+    llvm-libraries
     ${LLVM_TOOLCHAIN_TOOLS}
     CACHE STRING "")
