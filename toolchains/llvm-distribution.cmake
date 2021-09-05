@@ -49,7 +49,7 @@ endif()
 set(LLVM_ENABLE_ASSERTIONS ON CACHE BOOL "")
 set(CMAKE_BUILD_TYPE Release CACHE STRING "")
 
-set(LLVM_INSTALL_TOOLCHAIN_ONLY ON CACHE BOOL "")
+set(LLVM_INSTALL_TOOLCHAIN_ONLY OFF CACHE BOOL "")
 
 set(LLVM_TOOLCHAIN_TOOLS
     dsymutil
@@ -86,12 +86,17 @@ set(LLVM_TOOLCHAIN_TOOLS
     llvm-xray
     CACHE STRING "")
 
+set(LLVM_DEVELOPMENT_COMPONENTS
+    clang-cmake-exports
+    clang-development-cmake-exports
+    clang-headers
+    CACHE STRING "")
+
 set(LLVM_DISTRIBUTION_COMPONENTS
     clang
     lld
     LTO
     clang-format
-    clang-libraries
-    llvm-libraries
+    ${LLVM_DEVELOPMENT_COMPONENTS}
     ${LLVM_TOOLCHAIN_TOOLS}
     CACHE STRING "")
