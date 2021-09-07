@@ -20,9 +20,25 @@ endif()
 
 set(PACKAGE_VENDOR "awakecoding" CACHE STRING "")
 
-set(LLVM_TARGETS_TO_BUILD "X86;ARM;AArch64;Mips;PowerPC;RISCV;WebAssembly" CACHE STRING "")
+set(LLVM_TARGETS_TO_BUILD
+    "X86"
+    "ARM"
+    "AArch64"
+    "Mips"
+    "PowerPC"
+    "RISCV"
+    "NVPTX"
+    "Hexagon"
+    "WebAssembly"
+    CACHE STRING "")
 
-set(LLVM_ENABLE_PROJECTS "clang;clang-tools-extra;llvm;lld" CACHE STRING "")
+set(LLVM_ENABLE_PROJECTS
+    "clang"
+    "clang-tools-extra"
+    "llvm"
+    "lld"
+    CACHE STRING "")
+
 set(LLVM_ENABLE_RUNTIMES "" CACHE STRING "")
 
 set(LLVM_ENABLE_BACKTRACES OFF CACHE BOOL "")
@@ -74,6 +90,7 @@ set(LLVM_BINUTILS_COMPONENTS
 
 set(LLVM_TOOLCHAIN_TOOLS
     dsymutil
+    llvm-as
     llvm-cat
     llvm-cov
     llvm-config
@@ -83,6 +100,7 @@ set(LLVM_TOOLCHAIN_TOOLS
     llvm-ifs
     llvm-gsymutil
     llvm-lib
+    llvm-link
     llvm-mt
     llvm-pdbutil
     llvm-profdata
