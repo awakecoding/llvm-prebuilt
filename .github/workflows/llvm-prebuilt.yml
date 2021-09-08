@@ -111,10 +111,9 @@ jobs:
         shell: pwsh
         run: |
           $TargetName = "${{matrix.arch}}-${{matrix.os}}"
-          $InstallPrefix = "$Env:GITHUB_WORKSPACE/llvm-install"
           $CMakeCache = "$Env:GITHUB_WORKSPACE/llvm-prebuilt/cmake/$TargetName.cmake"
           cmake -G Ninja -S llvm-project/llvm -B llvm-build `
-            -DCMAKE_INSTALL_PREFIX=$InstallPrefix `
+            -DCMAKE_INSTALL_PREFIX=llvm-install `
             -C $CMakeCache -Wno-dev
 
       - name: Build LLVM
