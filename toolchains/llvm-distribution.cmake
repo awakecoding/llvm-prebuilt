@@ -120,6 +120,9 @@ set(LLVM_DEVELOPMENT_COMPONENTS
     clang-libraries
     clang-cmake-exports
     clang-resource-headers
+    libclang-headers
+    lld-headers # requires patch
+    lld-cmake-exports
     CACHE STRING "")
 
 set(LLVM_DISTRIBUTION_COMPONENTS

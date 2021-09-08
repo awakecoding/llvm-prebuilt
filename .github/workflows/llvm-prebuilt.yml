@@ -75,6 +75,10 @@ jobs:
           ref: ${{matrix.branch}}
           path: llvm-project
 
+      - name: Patch LLVM
+        run: |
+          git -C llvm-project apply ../llvm-prebuilt/patches/0001-add-lld-headers-target.patch
+
       - name: Enable Windows host environment
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
