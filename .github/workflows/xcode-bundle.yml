@@ -5,9 +5,15 @@ jobs:
     name: Xcode bundle
     runs-on: macos-10.15
     steps:
-      - name: Configure macOS runner
+      - name: Copy Xcode toolchain
         run: |
-          brew install --cask powershell
+          XCODE_DEVELOPER_PATH=$(xcode-select -p)
+          XCODE_TOOLCHAINS_PATH="$XCODE_DEVELOPER_PATH/Toolchains"
+          XCODE_TOOLCHAIN_PATH="$XCODE_TOOLCHAINS_PATH/XcodeDefault.xctoolchain"
+          DESTINATION_PATH="xcode-bundle/XcodeDefault.xctoolchain"
+          mkdir -p $DESTINATION_PATH
+          cp -r "$XCODE_TOOLCHAIN_PATH/usr/include" "DESTINATION_PATH/usr/include"
+          cp -r "$XCODE_TOOLCHAIN_PATH/usr/lib" "DESTINATION_PATH/usr/lib"
 
       - name: Copy macOS SDK
         run: |
@@ -31,23 +37,6 @@ jobs:
 
           mkdir -p xcode-bundle
           cp -R $PLATFORM_SDK_PATH xcode-bundle/
-
-      - name: Copy Xcode toolchain
-        shell: pwsh
-        run: |
-          $XcodeDeveloperPath = $(xcode-select -p)
-          $XcodePlatformsPath = Join-Path $XcodeDeveloperPath "Platforms"
-
-          $BundlePath = Join-Path $Env:GITHUB_WORKSPACE "xcode-bundle"
-          New-Item -Path $BundlePath -ItemType Directory | Out-Null
-
-          Write-Host "Copying Xcode xctoolchain"
-          $XcodeToolchainsPath = Join-Path $XcodeDeveloperPath "Toolchains"
-          $XcodeToolchainPath = Join-Path $XcodeToolchainsPath "XcodeDefault.xctoolchain"
-          $DestinationPath = Join-Path $BundlePath "XcodeDefault.xctoolchain"
-          New-Item -Path $DestinationPath -ItemType Directory | Out-Null
-          cp -r "$XcodeToolchainPath\usr\include" "$DestinationPath\usr\include"
-          cp -r "$XcodeToolchainPath\usr\lib" "$DestinationPath\usr\lib"
 
       - name: Package Xcode bundle
         shell: pwsh
