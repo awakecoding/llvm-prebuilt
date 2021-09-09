@@ -1,0 +1,45 @@
+name: xcode bundle
+on: workflow_dispatch
+jobs:
+  build:
+    name: Xcode bundle
+    runs-on: macos-10.15
+    steps:
+      - name: Configure macOS runner
+        run: |
+          brew install --cask powershell
+
+      - name: Copy Xcode bundle
+        shell: pwsh
+        run: |
+          $XcodeDeveloperPath = $(xcode-select -p)
+          $XcodePlatformsPath = Join-Path $XcodeDeveloperPath "Platforms"
+
+          $BundlePath = Join-Path $Env:GITHUB_WORKSPACE "xcode-bundle"
+          New-Item -Path $BundlePath -ItemType Directory | Out-Null
+
+          foreach ($Platform in @('MacOSX','iPhoneOS','iPhoneSimulator')) {
+            Write-Host "Copying $Platform SDK"
+            $PlatformPath = Join-Path $XcodePlatformsPath "$Platform.platform"
+            $PlatformSdkPath = Join-Path $PlatformPath "Developer" "SDKs" "$Platform.sdk"
+            Copy-Item -Recurse -Path $PlatformSdkPath -Destination $BundlePath
+          }
+
+          Write-Host "Copying Xcode xctoolchain"
+          $XcodeToolchainsPath = Join-Path $XcodeDeveloperPath "Toolchains"
+          $XcodeToolchainPath = Join-Path $XcodeToolchainsPath "XcodeDefault.xctoolchain"
+          $DestinationPath = Join-Path $BundlePath "XcodeDefault.xctoolchain"
+          New-Item -Path $DestinationPath -ItemType Directory | Out-Null
+          Copy-Item -Recurse -Path "$XcodeToolchainPath\usr\include" -Destination "$DestinationPath\usr\include"
+          Copy-Item -Recurse -Path "$XcodeToolchainPath\usr\lib" -Destination "$DestinationPath\usr\lib"
+
+      - name: Package Xcode bundle
+        shell: pwsh
+        run: |
+          tar -cJf xcode-bundle.tar.xz xcode-bundle
+
+      - name: Upload xcode-bundle package
+        uses: actions/upload-artifact@v2
+        with:
+          name: xcode-bundle
+          path: xcode-bundle.tar.xz
