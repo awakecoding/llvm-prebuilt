@@ -2,7 +2,7 @@ name: LLVM prebuilt
 on: workflow_dispatch
 jobs:
   build:
-    name: LLVM ${{matrix.version}} [${{matrix.arch}}-${{matrix.os}}]
+    name: LLVM ${{matrix.version}} [${{matrix.arch}}-${{matrix.os}}] ${{matrix.distro}}
     runs-on: ${{matrix.runner}}
     strategy:
       fail-fast: false
