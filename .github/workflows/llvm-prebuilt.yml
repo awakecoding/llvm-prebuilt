@@ -12,6 +12,16 @@ jobs:
         distro: [ ubuntu-18.04, ubuntu-20.04 ]
         version: [ 12.0.1 ]
 
+        exclude:
+          - os: windows
+            distro: ubuntu-18.04
+          - os: windows
+            distro: ubuntu-20.04
+          - os: macos
+            distro: ubuntu-18.04
+          - os: macos
+            distro: ubuntu-20.04
+
         include:
           - version: 12.0.1
             branch: release/12.x
