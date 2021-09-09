@@ -8,19 +8,20 @@ jobs:
       fail-fast: false
       matrix:
         arch: [ x86_64 ]
-        os: [ linux ]
+        os: [ ubuntu-18.04, ubuntu-20.04 ]
 
         include:
-          - os: linux
+          - os: ubuntu-18.04
             runner: ubuntu-18.04
+          - os: ubuntu-20.04
+            runner: ubuntu-20.04
+  
     steps:
       - name: Configure Linux runner
-        if: runner.os == 'Linux'
         run: |
           sudo apt update
-          sudo apt install git xz-utils
+          sudo apt install git xz-utils ninja-build
           sudo apt install libssl-dev libxml2-dev liblzma-dev libbz2-dev
-          sudo apt install ninja-build ${{matrix.multilib}}
 
       - name: Build libxar
         run: |

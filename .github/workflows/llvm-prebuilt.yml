@@ -2,13 +2,13 @@ name: LLVM prebuilt
 on: workflow_dispatch
 jobs:
   build:
-    name: LLVM ${{matrix.version}} [${{matrix.arch}}-${{matrix.os}}]
+    name: LLVM ${{matrix.version}} [${{matrix.arch}}-${{matrix.os}}] ${{matrix.distro}}
     runs-on: ${{matrix.runner}}
     strategy:
       fail-fast: false
       matrix:
         arch: [ x86_64, aarch64 ]
-        os: [ windows, macos, linux ]
+        os: [ windows, macos, ubuntu-18.04, ubuntu-20.04 ]
         version: [ 12.0.1 ]
 
         include:
@@ -19,8 +19,10 @@ jobs:
             runner: windows-2019
           - os: macos
             runner: macos-10.15
-          - os: linux
+          - os: ubuntu-18.04
             runner: ubuntu-18.04
+          - os: ubuntu-20.04
+            runner: ubuntu-20.04
 
           - arch: x86_64
             os: windows
@@ -35,9 +37,6 @@ jobs:
           - arch: aarch64
             os: macos
             osx_arch: arm64
-
-          - arch: aarch64
-            os: linux
     steps:
       - name: Configure Windows runner
         if: runner.os == 'Windows'
@@ -50,16 +49,33 @@ jobs:
           brew install ninja
           echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
 
-      - name: Configure Ubuntu runner
-        if: runner.os == 'Linux'
+      - name: Configure Ubuntu 18.04 runner
+        if: matrix.os == 'ubuntu-18.04'
+        shell: pwsh
         run: |
           sudo apt update
           sudo apt install xz-utils libxml2-dev
           sudo apt install ninja-build
           sudo apt install g++-aarch64-linux-gnu
           mkdir libxml2-dev-arm64 && cd libxml2-dev-arm64
-          wget http://ports.ubuntu.com/pool/main/libx/libxml2/libxml2-dev_2.9.4+dfsg1-6.1ubuntu1.4_arm64.deb
-          ar -x libxml2-dev_2.9.4+dfsg1-6.1ubuntu1.4_arm64.deb
+          $LibXmlDebFile = "libxml2-dev_2.9.4+dfsg1-6.1ubuntu1.4_arm64.deb"
+          wget -q "http://ports.ubuntu.com/pool/main/libx/libxml2/$LibXmlDebFile"
+          ar -x "$LibXmlDebFile"
+          tar -xf data.tar.xz
+          sudo cp -R ./usr/lib/aarch64-linux-gnu/ /usr/lib/aarch64-linux-gnu
+
+      - name: Configure Ubuntu 20.04 runner
+        if: matrix.os == 'ubuntu-20.04'
+        shell: pwsh
+        run: |
+          sudo apt update
+          sudo apt install xz-utils libxml2-dev
+          sudo apt install ninja-build
+          sudo apt install g++-aarch64-linux-gnu
+          mkdir libxml2-dev-arm64 && cd libxml2-dev-arm64
+          $LibXmlDebFile = "libxml2-dev_2.9.10+dfsg-5ubuntu0.20.04.1_arm64.deb"
+          wget -q "http://ports.ubuntu.com/pool/main/libx/libxml2/$LibXmlDebFile"
+          ar -x "$LibXmlDebFile"
           tar -xf data.tar.xz
           sudo cp -R ./usr/lib/aarch64-linux-gnu/ /usr/lib/aarch64-linux-gnu
 
@@ -77,7 +93,7 @@ jobs:
 
       - name: Patch LLVM
         run: |
-          git -C llvm-project apply ../llvm-prebuilt/patches/0001-add-lld-headers-target.patch
+          git -C llvm-project apply ../llvm-prebuilt/patches/0001-add-lld-install-targets.patch
 
       - name: Enable Windows host environment
         if: runner.os == 'Windows'
