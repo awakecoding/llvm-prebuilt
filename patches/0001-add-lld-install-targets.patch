@@ -1,11 +1,12 @@
-From e72166d92b7f8db725c5e11b18d07037da05a187 Mon Sep 17 00:00:00 2001
+From 2b6f6d9199b1a7ce9e9034df3909cddd8bcde6d0 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Marc-Andr=C3=A9=20Moreau?= <mamoreau@devolutions.net>
 Date: Wed, 8 Sep 2021 08:49:13 -0400
 Subject: [PATCH] add lld install targets
 
 ---
- lld/CMakeLists.txt | 32 ++++++++++++++++++++++++++++++++
- 1 file changed, 32 insertions(+)
+ lld/CMakeLists.txt             | 32 ++++++++++++++++++++++++++++++++
+ lld/cmake/modules/AddLLD.cmake |  2 +-
+ 2 files changed, 33 insertions(+), 1 deletion(-)
 
 diff --git a/lld/CMakeLists.txt b/lld/CMakeLists.txt
 index 2e99564f4..5bb3d9ec0 100644
@@ -58,6 +59,19 @@ index 2e99564f4..5bb3d9ec0 100644
 +endif()
 +
  add_subdirectory(cmake/modules)
+diff --git a/lld/cmake/modules/AddLLD.cmake b/lld/cmake/modules/AddLLD.cmake
+index 9883475d1..b2f597191 100644
+--- a/lld/cmake/modules/AddLLD.cmake
++++ b/lld/cmake/modules/AddLLD.cmake
+@@ -21,7 +21,7 @@ macro(add_lld_library name)
+       ARCHIVE DESTINATION lib${LLVM_LIBDIR_SUFFIX}
+       RUNTIME DESTINATION bin)
+ 
+-    if (${ARG_SHARED} AND NOT CMAKE_CONFIGURATION_TYPES)
++    if (NOT CMAKE_CONFIGURATION_TYPES)
+       add_llvm_install_targets(install-${name}
+         DEPENDS ${name}
+         COMPONENT ${name})
 -- 
 2.25.1
 
