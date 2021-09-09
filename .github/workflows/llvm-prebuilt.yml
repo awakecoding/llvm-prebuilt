@@ -9,7 +9,7 @@ jobs:
       matrix:
         arch: [ x86_64, aarch64 ]
         os: [ windows, macos, linux ]
-        distro: [ ubuntu-18.04, ubuntu-20.04 ]
+        distro: [ none, ubuntu-18.04, ubuntu-20.04 ]
         version: [ 12.0.1 ]
 
         exclude:
@@ -21,6 +21,8 @@ jobs:
             distro: ubuntu-18.04
           - os: macos
             distro: ubuntu-20.04
+          - os: linux
+            distro: none
 
         include:
           - version: 12.0.1
