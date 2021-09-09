@@ -8,21 +8,8 @@ jobs:
       fail-fast: false
       matrix:
         arch: [ x86_64, aarch64 ]
-        os: [ windows, macos, linux ]
-        distro: [ none, ubuntu-18.04, ubuntu-20.04 ]
+        os: [ windows, macos, ubuntu-18.04, ubuntu-20.04 ]
         version: [ 12.0.1 ]
-
-        exclude:
-          - os: windows
-            distro: ubuntu-18.04
-          - os: windows
-            distro: ubuntu-20.04
-          - os: macos
-            distro: ubuntu-18.04
-          - os: macos
-            distro: ubuntu-20.04
-          - os: linux
-            distro: none
 
         include:
           - version: 12.0.1
@@ -32,11 +19,9 @@ jobs:
             runner: windows-2019
           - os: macos
             runner: macos-10.15
-          - os: linux
-            distro: ubuntu-18.04
+          - os: ubuntu-18.04
             runner: ubuntu-18.04
-          - os: linux
-            distro: ubuntu-20.04
+          - os: ubuntu-20.04
             runner: ubuntu-20.04
 
           - arch: x86_64
@@ -52,9 +37,6 @@ jobs:
           - arch: aarch64
             os: macos
             osx_arch: arm64
-
-          - arch: aarch64
-            os: linux
     steps:
       - name: Configure Windows runner
         if: runner.os == 'Windows'
@@ -67,8 +49,8 @@ jobs:
           brew install ninja
           echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
 
-      - name: Configure Linux runner
-        if: runner.os == 'Linux'
+      - name: Configure Ubuntu runner
+        if: startsWith(runner.os, 'ubuntu')
         run: |
           sudo apt update
           sudo apt install xz-utils libxml2-dev
