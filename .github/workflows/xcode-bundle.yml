@@ -17,20 +17,8 @@ jobs:
           PLATFORM_NAME=MacOSX
           PLATFORM_PATH="$XCODE_PLATFORMS_PATH/$PLATFORM_NAME.platform"
           PLATFORM_SDK_PATH="$PLATFORM_PATH/Developer/SDKs/$PLATFORM_NAME.sdk"
-
-          function rreadlink()
-          {
-            if [ ! -h "$1" ]; then
-              echo "$1"
-            else
-              local link="$(expr "$(command ls -ld -- "$1")" : '.*-> \(.*\)$')"
-              cd $(dirname $1)
-              rreadlink "$link" | sed "s|^\([^/].*\)\$|$(dirname $1)/\1|"
-            fi
-          }
-
           mkdir -p xcode-bundle
-          cp -r $(rreadlink $PLATFORM_SDK_PATH) "xcode-bundle/$PLATFORM_NAME.sdk" &>/dev/null
+          cp -R $PLATFORM_SDK_PATH "xcode-bundle/$PLATFORM_NAME.sdk"
 
       - name: Copy iOS SDK
         run: |
@@ -42,7 +30,7 @@ jobs:
           PLATFORM_SDK_PATH="$PLATFORM_PATH/Developer/SDKs/$PLATFORM_NAME.sdk"
 
           mkdir -p xcode-bundle
-          cp -r $PLATFORM_SDK_PATH xcode-bundle/
+          cp -R $PLATFORM_SDK_PATH xcode-bundle/
 
       - name: Copy Xcode toolchain
         shell: pwsh
