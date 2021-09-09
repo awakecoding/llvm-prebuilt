@@ -12,8 +12,8 @@ jobs:
           XCODE_TOOLCHAIN_PATH="$XCODE_TOOLCHAINS_PATH/XcodeDefault.xctoolchain"
           DESTINATION_PATH="xcode-bundle/XcodeDefault.xctoolchain"
           mkdir -p $DESTINATION_PATH
-          cp -r "$XCODE_TOOLCHAIN_PATH/usr/include" "DESTINATION_PATH/usr/include"
-          cp -r "$XCODE_TOOLCHAIN_PATH/usr/lib" "DESTINATION_PATH/usr/lib"
+          cp -r "$XCODE_TOOLCHAIN_PATH/usr/include" "$DESTINATION_PATH/usr/include"
+          cp -r "$XCODE_TOOLCHAIN_PATH/usr/lib" "$DESTINATION_PATH/usr/lib"
 
       - name: Copy macOS SDK
         run: |
