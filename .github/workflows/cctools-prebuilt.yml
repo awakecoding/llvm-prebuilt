@@ -20,9 +20,8 @@ jobs:
       - name: Configure Linux runner
         run: |
           sudo apt update
-          sudo apt install git xz-utils
+          sudo apt install git xz-utils ninja-build
           sudo apt install libssl-dev libxml2-dev liblzma-dev libbz2-dev
-          sudo apt install ninja-build ${{matrix.multilib}}
 
       - name: Build libxar
         run: |
