@@ -75,6 +75,10 @@ jobs:
           ref: ${{matrix.branch}}
           path: llvm-project
 
+      - name: Patch LLVM
+        run: |
+          git -C llvm-project apply ../llvm-prebuilt/patches/0001-add-lld-headers-target.patch
+
       - name: Enable Windows host environment
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
@@ -97,14 +101,6 @@ jobs:
           echo "CLANG_TABLEGEN=$HostBinPath/clang-tblgen$ExeExt" >> $Env:GITHUB_ENV
           echo "LLVM_CONFIG_PATH=$HostBinPath/llvm-config$ExeExt" >> $Env:GITHUB_ENV
 
-      - name: Set CMake environment
-        shell: pwsh
-        run: |
-          $ToolchainPath = "$Env:GITHUB_WORKSPACE/llvm-prebuilt/toolchains"
-          $ToolchainName = "${{matrix.arch}}-${{matrix.os}}"
-          echo "CMAKE_TOOLCHAIN_FILE=$ToolchainPath/$ToolchainName.cmake" >> $Env:GITHUB_ENV
-          echo "CMAKE_INSTALL_PREFIX=$Env:GITHUB_WORKSPACE/llvm-install" >> $Env:GITHUB_ENV
-
       - name: Enable Windows target environment
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
@@ -112,7 +108,13 @@ jobs:
           arch: ${{matrix.msvc}}
 
       - name: Configure LLVM
-        run: "cmake -G Ninja -S llvm-project/llvm -B llvm-build -Wno-dev"
+        shell: pwsh
+        run: |
+          $TargetName = "${{matrix.arch}}-${{matrix.os}}"
+          $CMakeCache = "$Env:GITHUB_WORKSPACE/llvm-prebuilt/cmake/$TargetName.cmake"
+          cmake -G Ninja -S llvm-project/llvm -B llvm-build `
+            -DCMAKE_INSTALL_PREFIX=llvm-install `
+            -C $CMakeCache -Wno-dev
 
       - name: Build LLVM
         run: cmake --build llvm-build

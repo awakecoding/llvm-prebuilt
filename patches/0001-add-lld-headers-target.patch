@@ -1,0 +1,36 @@
+From 65610409f3a55c9f9793fab44d76088e589ffbb3 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marc-Andr=C3=A9=20Moreau?= <mamoreau@devolutions.net>
+Date: Wed, 8 Sep 2021 08:49:13 -0400
+Subject: [PATCH] add lld-headers target
+
+---
+ lld/CMakeLists.txt | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/lld/CMakeLists.txt b/lld/CMakeLists.txt
+index 2e99564f4..2d02b0cb5 100644
+--- a/lld/CMakeLists.txt
++++ b/lld/CMakeLists.txt
+@@ -189,9 +189,19 @@ include_directories(BEFORE
+ if (NOT LLVM_INSTALL_TOOLCHAIN_ONLY)
+   install(DIRECTORY include/
+     DESTINATION include
++    COMPONENT lld-headers
+     FILES_MATCHING
+     PATTERN "*.h"
+     )
++
++  add_custom_target(lld-headers)
++  set_target_properties(lld-headers PROPERTIES FOLDER "Misc")
++  
++  if(NOT LLVM_ENABLE_IDE)
++    add_llvm_install_targets(install-lld-headers
++                            DEPENDS lld-headers
++                            COMPONENT lld-headers)
++  endif()
+ endif()
+ 
+ add_subdirectory(Common)
+-- 
+2.25.1
+

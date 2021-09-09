@@ -18,11 +18,31 @@ if(DEFINED ENV{LLVM_CONFIG_PATH})
     message(STATUS "LLVM_CONFIG_PATH: ${LLVM_CONFIG_PATH}")
 endif()
 
+if(CMAKE_INSTALL_PREFIX)
+    message(STATUS "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
+endif()
+
 set(PACKAGE_VENDOR "awakecoding" CACHE STRING "")
 
-set(LLVM_TARGETS_TO_BUILD "X86;ARM;AArch64;Mips;PowerPC;RISCV;WebAssembly" CACHE STRING "")
+set(LLVM_TARGETS_TO_BUILD
+    "X86"
+    "ARM"
+    "AArch64"
+    "Mips"
+    "PowerPC"
+    "RISCV"
+    "NVPTX"
+    "Hexagon"
+    "WebAssembly"
+    CACHE STRING "")
 
-set(LLVM_ENABLE_PROJECTS "clang;clang-tools-extra;llvm;lld" CACHE STRING "")
+set(LLVM_ENABLE_PROJECTS
+    "clang"
+    "clang-tools-extra"
+    "llvm"
+    "lld"
+    CACHE STRING "")
+
 set(LLVM_ENABLE_RUNTIMES "" CACHE STRING "")
 
 set(LLVM_ENABLE_BACKTRACES OFF CACHE BOOL "")
@@ -74,6 +94,7 @@ set(LLVM_BINUTILS_COMPONENTS
 
 set(LLVM_TOOLCHAIN_TOOLS
     dsymutil
+    llvm-as
     llvm-cat
     llvm-cov
     llvm-config
@@ -83,6 +104,7 @@ set(LLVM_TOOLCHAIN_TOOLS
     llvm-ifs
     llvm-gsymutil
     llvm-lib
+    llvm-link
     llvm-mt
     llvm-pdbutil
     llvm-profdata
@@ -102,6 +124,9 @@ set(LLVM_DEVELOPMENT_COMPONENTS
     clang-libraries
     clang-cmake-exports
     clang-resource-headers
+    libclang-headers
+    lld-headers # requires patch
+    lld-cmake-exports
     CACHE STRING "")
 
 set(LLVM_DISTRIBUTION_COMPONENTS
