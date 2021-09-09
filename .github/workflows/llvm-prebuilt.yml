@@ -24,7 +24,7 @@ jobs:
             distro: ubuntu-18.04
             runner: ubuntu-18.04
           - os: linux
-            distro: ubuntu-18.04
+            distro: ubuntu-20.04
             runner: ubuntu-20.04
 
           - arch: x86_64
