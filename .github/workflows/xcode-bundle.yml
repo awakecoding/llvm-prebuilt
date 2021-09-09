@@ -9,7 +9,31 @@ jobs:
         run: |
           brew install --cask powershell
 
-      - name: Copy Xcode bundle
+      - name: Copy macOS SDK
+        run: |
+          XCODE_DEVELOPER_PATH=$(xcode-select -p)
+          XCODE_PLATFORMS_PATH="$XCODE_DEVELOPER_PATH/Platforms"
+
+          PLATFORM_NAME=MacOSX
+          PLATFORM_PATH="$XCODE_PLATFORMS_PATH/$PLATFORM_NAME.platform"
+          PLATFORM_SDK_PATH="$PLATFORM_PATH/Developer/SDKs/$PLATFORM_NAME.sdk"
+
+          mkdir -p xcode-bundle
+          cp -r $PLATFORM_SDK_PATH xcode-bundle/
+
+      - name: Copy iOS SDK
+        run: |
+          XCODE_DEVELOPER_PATH=$(xcode-select -p)
+          XCODE_PLATFORMS_PATH="$XCODE_DEVELOPER_PATH/Platforms"
+
+          PLATFORM_NAME=iPhoneOS
+          PLATFORM_PATH="$XCODE_PLATFORMS_PATH/$PLATFORM_NAME.platform"
+          PLATFORM_SDK_PATH="$PLATFORM_PATH/Developer/SDKs/$PLATFORM_NAME.sdk"
+
+          mkdir -p xcode-bundle
+          cp -r $PLATFORM_SDK_PATH xcode-bundle/
+
+      - name: Copy Xcode toolchain
         shell: pwsh
         run: |
           $XcodeDeveloperPath = $(xcode-select -p)
@@ -18,20 +42,13 @@ jobs:
           $BundlePath = Join-Path $Env:GITHUB_WORKSPACE "xcode-bundle"
           New-Item -Path $BundlePath -ItemType Directory | Out-Null
 
-          foreach ($Platform in @('MacOSX','iPhoneOS','iPhoneSimulator')) {
-            Write-Host "Copying $Platform SDK"
-            $PlatformPath = Join-Path $XcodePlatformsPath "$Platform.platform"
-            $PlatformSdkPath = Join-Path $PlatformPath "Developer" "SDKs" "$Platform.sdk"
-            Copy-Item -Recurse -Path $PlatformSdkPath -Destination $BundlePath
-          }
-
           Write-Host "Copying Xcode xctoolchain"
           $XcodeToolchainsPath = Join-Path $XcodeDeveloperPath "Toolchains"
           $XcodeToolchainPath = Join-Path $XcodeToolchainsPath "XcodeDefault.xctoolchain"
           $DestinationPath = Join-Path $BundlePath "XcodeDefault.xctoolchain"
           New-Item -Path $DestinationPath -ItemType Directory | Out-Null
-          Copy-Item -Recurse -Path "$XcodeToolchainPath\usr\include" -Destination "$DestinationPath\usr\include"
-          Copy-Item -Recurse -Path "$XcodeToolchainPath\usr\lib" -Destination "$DestinationPath\usr\lib"
+          cp -r "$XcodeToolchainPath\usr\include" "$DestinationPath\usr\include"
+          cp -r "$XcodeToolchainPath\usr\lib" "$DestinationPath\usr\lib"
 
       - name: Package Xcode bundle
         shell: pwsh
