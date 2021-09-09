@@ -49,8 +49,8 @@ jobs:
           brew install ninja
           echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
 
-      - name: Configure Ubuntu runner
-        if: startsWith(runner.os, 'ubuntu')
+      - name: Configure Ubuntu 18.04 runner
+        if: runner.os == 'ubuntu-18.04'
         shell: pwsh
         run: |
           sudo apt update
@@ -58,12 +58,22 @@ jobs:
           sudo apt install ninja-build
           sudo apt install g++-aarch64-linux-gnu
           mkdir libxml2-dev-arm64 && cd libxml2-dev-arm64
-          $ReleaseNumber = $(lsb_release -rs)
-          $LibXmlDebFile = if ($ReleaseNumber -eq '20.04') {
-            "libxml2-dev_2.9.10+dfsg-5ubuntu0.20.04.1_arm64.deb"
-          } else {
-            "libxml2-dev_2.9.4+dfsg1-6.1ubuntu1.4_arm64.deb"
-          } 
+          $LibXmlDebFile = "libxml2-dev_2.9.4+dfsg1-6.1ubuntu1.4_arm64.deb"
+          wget "http://ports.ubuntu.com/pool/main/libx/libxml2/$LibXmlDebFile"
+          ar -x $LibXmlDevFile
+          tar -xf data.tar.xz
+          sudo cp -R ./usr/lib/aarch64-linux-gnu/ /usr/lib/aarch64-linux-gnu
+
+      - name: Configure Ubuntu 20.04 runner
+        if: runner.os == 'ubuntu-20.04'
+        shell: pwsh
+        run: |
+          sudo apt update
+          sudo apt install xz-utils libxml2-dev
+          sudo apt install ninja-build
+          sudo apt install g++-aarch64-linux-gnu
+          mkdir libxml2-dev-arm64 && cd libxml2-dev-arm64
+          $LibXmlDebFile = "libxml2-dev_2.9.10+dfsg-5ubuntu0.20.04.1_arm64.deb"
           wget "http://ports.ubuntu.com/pool/main/libx/libxml2/$LibXmlDebFile"
           ar -x $LibXmlDevFile
           tar -xf data.tar.xz
