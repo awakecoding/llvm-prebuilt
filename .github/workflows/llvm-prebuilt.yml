@@ -50,7 +50,7 @@ jobs:
           echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
 
       - name: Configure Ubuntu 18.04 runner
-        if: runner.os == 'ubuntu-18.04'
+        if: matrix.os == 'ubuntu-18.04'
         shell: pwsh
         run: |
           sudo apt update
@@ -65,7 +65,7 @@ jobs:
           sudo cp -R ./usr/lib/aarch64-linux-gnu/ /usr/lib/aarch64-linux-gnu
 
       - name: Configure Ubuntu 20.04 runner
-        if: runner.os == 'ubuntu-20.04'
+        if: matrix.os == 'ubuntu-20.04'
         shell: pwsh
         run: |
           sudo apt update
