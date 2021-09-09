@@ -12,8 +12,8 @@ jobs:
           XCODE_TOOLCHAIN_PATH="$XCODE_TOOLCHAINS_PATH/XcodeDefault.xctoolchain"
           DESTINATION_PATH="xcode-bundle/XcodeDefault.xctoolchain"
           mkdir -p $DESTINATION_PATH
-          cp -r "$XCODE_TOOLCHAIN_PATH/usr/include" "$DESTINATION_PATH/usr/include"
-          cp -r "$XCODE_TOOLCHAIN_PATH/usr/lib" "$DESTINATION_PATH/usr/lib"
+          cp -r "$XCODE_TOOLCHAIN_PATH/usr/include" "./$DESTINATION_PATH/usr/include"
+          cp -r "$XCODE_TOOLCHAIN_PATH/usr/lib" "./$DESTINATION_PATH/usr/lib"
 
       - name: Copy macOS SDK
         run: |
@@ -24,7 +24,7 @@ jobs:
           PLATFORM_PATH="$XCODE_PLATFORMS_PATH/$PLATFORM_NAME.platform"
           PLATFORM_SDK_PATH="$PLATFORM_PATH/Developer/SDKs/$PLATFORM_NAME.sdk"
           mkdir -p xcode-bundle
-          cp -R $PLATFORM_SDK_PATH "xcode-bundle/$PLATFORM_NAME.sdk"
+          cp -R $PLATFORM_SDK_PATH "./xcode-bundle/$PLATFORM_NAME.sdk"
 
       - name: Copy iOS SDK
         run: |
@@ -36,7 +36,7 @@ jobs:
           PLATFORM_SDK_PATH="$PLATFORM_PATH/Developer/SDKs/$PLATFORM_NAME.sdk"
 
           mkdir -p xcode-bundle
-          cp -R $PLATFORM_SDK_PATH xcode-bundle/
+          cp -R $PLATFORM_SDK_PATH "./xcode-bundle/$PLATFORM_NAME.sdk"
 
       - name: Package Xcode bundle
         shell: pwsh
