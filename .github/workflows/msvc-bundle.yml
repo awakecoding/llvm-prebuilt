@@ -1,0 +1,42 @@
+name: msvc bundle
+on: workflow_dispatch
+jobs:
+  build:
+    name: MSVC bundle
+    runs-on: windows-2019
+    steps:
+      - name: Configure Windows runner
+        run: |
+          choco install 7zip
+
+      - name: Enable Windows target environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+
+      - name: Copy MSVC bundle
+        shell: pwsh
+        run: |
+          $BundlePath = $Env:GITHUB_WORKSPACE
+          Copy-Item -Recurse -Path $Env:VCToolsInstallDir\include -Destination $BundlePath\vctools\include
+          Copy-Item -Recurse -Path $Env:VCToolsInstallDir\lib -Destination $BundlePath\vctools\lib
+          Copy-Item -Recurse -Path $Env:WindowsSdkDir\Include\$Env:WindowsSDKVersion\ $BundlePath\winsdk\Include\$Env:WindowsSDKVersion
+          Copy-Item -Recurse -Path $Env:WindowsSdkDir\Lib\$Env:WindowsSDKVersion\ $BundlePath\winsdk\Lib\$Env:WindowsSDKVersion
+
+      - name: Package MSVC bundle
+        shell: pwsh
+        run: |
+          cmd.exe /c "7z a -ttar -snl -so vctools.tar vctools | 7z a -si vctools.tar.xz"
+          cmd.exe /c "7z a -ttar -snl -so winsdk.tar winsdk | 7z a -si winsdk.tar.xz"
+
+      - name: Upload vctools package
+        uses: actions/upload-artifact@v2
+        with:
+          name: vctools
+          path: vctools.tar.xz
+
+      - name: Upload winsdk package
+        uses: actions/upload-artifact@v2
+        with:
+          name: winsdk
+          path: winsdk.tar.xz
