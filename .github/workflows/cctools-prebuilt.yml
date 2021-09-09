@@ -9,6 +9,12 @@ jobs:
       matrix:
         arch: [ x86_64 ]
         os: [ ubuntu-18.04, ubuntu-20.04 ]
+
+        include:
+          - os: ubuntu-18.04
+            runner: ubuntu-18.04
+          - os: ubuntu-20.04
+            runner: ubuntu-20.04
   
     steps:
       - name: Configure Linux runner
