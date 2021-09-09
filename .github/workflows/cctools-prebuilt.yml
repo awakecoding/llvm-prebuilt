@@ -8,14 +8,10 @@ jobs:
       fail-fast: false
       matrix:
         arch: [ x86_64 ]
-        os: [ linux ]
-
-        include:
-          - os: linux
-            runner: ubuntu-18.04
+        os: [ ubuntu-18.04, ubuntu-20.04 ]
+  
     steps:
       - name: Configure Linux runner
-        if: runner.os == 'Linux'
         run: |
           sudo apt update
           sudo apt install git xz-utils
