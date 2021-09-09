@@ -1,0 +1,63 @@
+From e72166d92b7f8db725c5e11b18d07037da05a187 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marc-Andr=C3=A9=20Moreau?= <mamoreau@devolutions.net>
+Date: Wed, 8 Sep 2021 08:49:13 -0400
+Subject: [PATCH] add lld install targets
+
+---
+ lld/CMakeLists.txt | 32 ++++++++++++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
+
+diff --git a/lld/CMakeLists.txt b/lld/CMakeLists.txt
+index 2e99564f4..5bb3d9ec0 100644
+--- a/lld/CMakeLists.txt
++++ b/lld/CMakeLists.txt
+@@ -189,9 +189,19 @@ include_directories(BEFORE
+ if (NOT LLVM_INSTALL_TOOLCHAIN_ONLY)
+   install(DIRECTORY include/
+     DESTINATION include
++    COMPONENT lld-headers
+     FILES_MATCHING
+     PATTERN "*.h"
+     )
++
++  add_custom_target(lld-headers)
++  set_target_properties(lld-headers PROPERTIES FOLDER "Misc")
++  
++  if(NOT LLVM_ENABLE_IDE)
++    add_llvm_install_targets(install-lld-headers
++                            DEPENDS lld-headers
++                            COMPONENT lld-headers)
++  endif()
+ endif()
+ 
+ add_subdirectory(Common)
+@@ -210,4 +220,26 @@ add_subdirectory(MachO)
+ add_subdirectory(MinGW)
+ add_subdirectory(wasm)
+ 
++# Custom target to install all lld libraries.
++add_custom_target(lld-libraries)
++set_target_properties(lld-libraries PROPERTIES FOLDER "Misc")
++
++if(NOT LLVM_ENABLE_IDE)
++  add_llvm_install_targets(install-lld-libraries
++                           DEPENDS lld-libraries
++                           COMPONENT lld-libraries)
++endif()
++
++get_property(LLD_EXPORTS GLOBAL PROPERTY LLD_EXPORTS)
++if(LLD_EXPORTS)
++  list(REMOVE_DUPLICATES LLD_EXPORTS)
++  foreach(lib ${LLD_EXPORTS})
++    add_dependencies(lld-libraries ${lib})
++    if(NOT LLVM_ENABLE_IDE)
++      add_dependencies(install-lld-libraries install-${lib})
++      add_dependencies(install-lld-libraries-stripped install-${lib}-stripped)
++    endif()
++  endforeach()
++endif()
++
+ add_subdirectory(cmake/modules)
+-- 
+2.25.1
+

@@ -9,6 +9,7 @@ jobs:
       matrix:
         arch: [ x86_64, aarch64 ]
         os: [ windows, macos, linux ]
+        distro: [ ubuntu-18.04 ]
         version: [ 12.0.1 ]
 
         include:
@@ -50,7 +51,7 @@ jobs:
           brew install ninja
           echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
 
-      - name: Configure Ubuntu runner
+      - name: Configure Linux runner
         if: runner.os == 'Linux'
         run: |
           sudo apt update
@@ -77,7 +78,7 @@ jobs:
 
       - name: Patch LLVM
         run: |
-          git -C llvm-project apply ../llvm-prebuilt/patches/0001-add-lld-headers-target.patch
+          git -C llvm-project apply ../llvm-prebuilt/patches/0001-add-lld-install-targets.patch
 
       - name: Enable Windows host environment
         if: runner.os == 'Windows'
