@@ -10,7 +10,7 @@ jobs:
           XCODE_DEVELOPER_PATH=$(xcode-select -p)
           XCODE_TOOLCHAINS_PATH="$XCODE_DEVELOPER_PATH/Toolchains"
           XCODE_TOOLCHAIN_PATH="$XCODE_TOOLCHAINS_PATH/XcodeDefault.xctoolchain"
-          DESTINATION_PATH="xcode-bundle/XcodeDefault.xctoolchain"
+          DESTINATION_PATH="./xcode-bundle/XcodeDefault.xctoolchain"
           mkdir -p "./$DESTINATION_PATH/usr/include"
           mkdir -p "./$DESTINATION_PATH/usr/lib"
           cp -r "$XCODE_TOOLCHAIN_PATH/usr/include" "./$DESTINATION_PATH/usr/include"
@@ -24,8 +24,9 @@ jobs:
           PLATFORM_NAME=MacOSX
           PLATFORM_PATH="$XCODE_PLATFORMS_PATH/$PLATFORM_NAME.platform"
           PLATFORM_SDK_PATH="$PLATFORM_PATH/Developer/SDKs/$PLATFORM_NAME.sdk"
+
           mkdir -p xcode-bundle
-          cp -r $PLATFORM_SDK_PATH "./xcode-bundle/$PLATFORM_NAME.sdk"
+          cp -r $PLATFORM_SDK_PATH "./xcode-bundle/$PLATFORM_NAME.sdk" 2>/dev/null || :
 
       - name: Copy iOS SDK
         run: |
@@ -37,12 +38,12 @@ jobs:
           PLATFORM_SDK_PATH="$PLATFORM_PATH/Developer/SDKs/$PLATFORM_NAME.sdk"
 
           mkdir -p xcode-bundle
-          cp -r $PLATFORM_SDK_PATH "./xcode-bundle/$PLATFORM_NAME.sdk"
+          cp -r $PLATFORM_SDK_PATH "./xcode-bundle/$PLATFORM_NAME.sdk" 2>/dev/null || :
 
       - name: Package Xcode bundle
         shell: pwsh
         run: |
-          tar -cJf xcode-bundle.tar.xz xcode-bundle
+          tar -cJf xcode-bundle.tar.xz ./xcode-bundle
 
       - name: Upload xcode-bundle package
         uses: actions/upload-artifact@v2
