@@ -1,0 +1,127 @@
+name: halide prebuilt
+on: workflow_dispatch
+jobs:
+  build:
+    name: halide [${{matrix.arch}}-${{matrix.os}}]
+    runs-on: ${{matrix.runner}}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [ x86_64 ]
+        os: [ windows, macos, ubuntu-18.04, ubuntu-20.04 ]
+        version: [ 12.0.1 ]
+
+        include:
+          - os: windows
+            runner: windows-2019
+          - os: macos
+            runner: macos-latest
+          - os: ubuntu-18.04
+            runner: ubuntu-18.04
+          - os: ubuntu-20.04
+            runner: ubuntu-20.04
+  
+    steps:
+      - name: Configure Windows runner
+        if: runner.os == 'Windows'
+        run: |
+          choco install ninja 7zip
+
+      - name: Configure macOS runner
+        if: runner.os == 'macOS'
+        run: |
+          brew install ninja
+          echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
+
+      - name: Configure Linux runner
+        run: |
+          sudo apt update
+          sudo apt install git xz-utils ninja-build
+
+      - name: Enable Windows environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+
+      - name: Install clang+llvm
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $CLANG_LLVM_OS="windows"
+          $CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.3"
+          $CLANG_LLVM_NAME="clang+llvm-12.0.1-x86_64-${CLANG_LLVM_OS}"
+          wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
+          tar -xf "${CLANG_LLVM_NAME}.tar.xz" -C "C:/temp"
+          mv "C:/temp/${CLANG_LLVM_NAME}" "C:/llvm"
+          echo "LLVM_DIR=C:/llvm/lib/cmake/llvm" >> $Env:GITHUB_ENV
+          echo "PATH=$PATH;C:/llvm/bin" >> $Env:GITHUB_ENV
+
+      - name: Install clang+llvm
+        if: runner.os == 'macOS'
+        run: |
+          CLANG_LLVM_OS="macos"
+          CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.3"
+          CLANG_LLVM_NAME="clang+llvm-12.0.1-x86_64-${CLANG_LLVM_OS}"
+          wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
+          tar -xf "${CLANG_LLVM_NAME}.tar.xz" -C /tmp
+          sudo mv "/tmp/${CLANG_LLVM_NAME}" /opt/llvm
+          echo "LLVM_DIR=/opt/llvm/lib/cmake/llvm" >> $GITHUB_ENV
+          echo "PATH=$PATH:/opt/llvm/bin" >> $GITHUB_ENV
+
+      - name: Install clang+llvm
+        if: runner.os == 'Linux'
+        run: |
+          CLANG_LLVM_OS="ubuntu-$(lsb_release -rs)"
+          CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.3"
+          CLANG_LLVM_NAME="clang+llvm-12.0.1-x86_64-${CLANG_LLVM_OS}"
+          wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
+          tar -xf "${CLANG_LLVM_NAME}.tar.xz" -C /tmp
+          sudo mv "/tmp/${CLANG_LLVM_NAME}" /opt/llvm
+          echo "LLVM_DIR=/opt/llvm/lib/cmake/llvm" >> $GITHUB_ENV
+          echo "PATH=$PATH:/opt/llvm/bin" >> $GITHUB_ENV
+
+      - name: Clone Halide ${{matrix.version}}
+        uses: actions/checkout@v2
+        with:
+          repository: halide/Halide
+          ref: v${{matrix.version}}
+          path: halide
+
+      - name: Configure Halide
+        shell: pwsh
+        run: |
+          cmake -G Ninja -S halide -B halide-build `
+            -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON `
+            -DWITH_TESTS=OFF -DWITH_APPS=OFF -DWITH_TUTORIALS=OFF `
+            -DWITH_DOCS=OFF -DWITH_UTILS=OFF -DWITH_PYTHON_BINDINGS=OFF `
+            -DTARGET_WEBASSEMBLY=OFF -DLLVM_DIR="$Env:LLVM_DIR" -Wno-dev `
+            -DCMAKE_INSTALL_PREFIX="halide-install"
+
+      - name: Build Halide
+        run: cmake --build halide-build
+
+      - name: Install Halide
+        run: cmake --install halide-build
+
+      - name: Package Halide
+        if: runner.os != 'Windows'
+        run: |
+          PACKAGE_NAME="halide-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}"
+          mv halide-install ./${PACKAGE_NAME}
+          tar -cJf ${PACKAGE_NAME}.tar.xz ${PACKAGE_NAME}
+
+      - name: Package Halide
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $PACKAGE_NAME="halide-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}"
+          mv llvm-install $PACKAGE_NAME
+          cmd.exe /c "7z a -ttar -snl -so $PACKAGE_NAME.tar $PACKAGE_NAME | 7z a -si $PACKAGE_NAME.tar.xz"
+
+
+      - name: Upload Halide package
+        uses: actions/upload-artifact@v2
+        with:
+          name: halide-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
+          path: halide-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz
