@@ -18,15 +18,17 @@ jobs:
         shell: pwsh
         run: |
           $BundlePath = $Env:GITHUB_WORKSPACE
+          New-Item -Path "$BundlePath\vctools" -ItemType Directory | Out-Null
           Copy-Item -Recurse -Path $Env:VCToolsInstallDir\include -Destination $BundlePath\vctools\include
-          Copy-Item -Path $Env:VCToolsInstallDir\lib\x86 -Destination $BundlePath\vctools\lib\x86
-          Copy-Item -Path $Env:VCToolsInstallDir\lib\x64 -Destination $BundlePath\vctools\lib\x64
-          Copy-Item -Path $Env:VCToolsInstallDir\lib\arm64 -Destination $BundlePath\vctools\lib\arm64
+          Copy-Item -Recurse -Path $Env:VCToolsInstallDir\lib\x86 -Destination $BundlePath\vctools\lib\x86
+          Copy-Item -Recurse -Path $Env:VCToolsInstallDir\lib\x64 -Destination $BundlePath\vctools\lib\x64
+          Copy-Item -Recurse -Path $Env:VCToolsInstallDir\lib\arm64 -Destination $BundlePath\vctools\lib\arm64
 
       - name: Copy winsdk
         shell: pwsh
         run: |
           $BundlePath = $Env:GITHUB_WORKSPACE
+          New-Item -Path "$BundlePath\winsdk" -ItemType Directory | Out-Null
           Copy-Item -Recurse -Path $Env:WindowsSdkDir\Include\$Env:WindowsSDKVersion\ $BundlePath\winsdk\Include\$Env:WindowsSDKVersion
           Copy-Item -Recurse -Path $Env:WindowsSdkDir\Lib\$Env:WindowsSDKVersion\ $BundlePath\winsdk\Lib\$Env:WindowsSDKVersion
 
@@ -38,7 +40,7 @@ jobs:
       - name: Package winsdk
         shell: pwsh
         run: |
-          cmd.exe /c "7z a -ttar -snl -so vctools.tar vctools | 7z a -si vctools.tar.xz"
+          cmd.exe /c "7z a -ttar -snl -so winsdk.tar winsdk | 7z a -si winsdk.tar.xz"
 
       - name: Upload vctools package
         uses: actions/upload-artifact@v2
