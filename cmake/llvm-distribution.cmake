@@ -112,6 +112,19 @@ set(LLVM_TOOLCHAIN_TOOLS
     ${LLVM_BINUTILS_COMPONENTS}
     CACHE STRING "")
 
+set(LLD_EXPORTED_TARGETS
+    lldCommon
+    lldCore
+    lldDriver
+    lldMachO
+    lldYAML
+    lldReaderWriter
+    lldCOFF
+    lldELF
+    lldMachO2
+    lldMinGW
+    lldWasm)
+
 set(LLVM_DEVELOPMENT_COMPONENTS
     cmake-exports
     llvm-headers
@@ -123,7 +136,7 @@ set(LLVM_DEVELOPMENT_COMPONENTS
     libclang-headers
     lld-headers # requires patch
     lld-libraries # requires patch
-    lldWasm # requires patch
+    ${LLD_EXPORTED_TARGETS} # cmake export fix
     lld-cmake-exports
     CACHE STRING "")
 
