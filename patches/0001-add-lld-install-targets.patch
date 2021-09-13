@@ -1,15 +1,15 @@
-From 2b6f6d9199b1a7ce9e9034df3909cddd8bcde6d0 Mon Sep 17 00:00:00 2001
+From b57568cc73c67aa8c2b5b555e6d63f9fca9cb802 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Marc-Andr=C3=A9=20Moreau?= <mamoreau@devolutions.net>
 Date: Wed, 8 Sep 2021 08:49:13 -0400
 Subject: [PATCH] add lld install targets
 
 ---
  lld/CMakeLists.txt             | 32 ++++++++++++++++++++++++++++++++
- lld/cmake/modules/AddLLD.cmake |  2 +-
- 2 files changed, 33 insertions(+), 1 deletion(-)
+ lld/cmake/modules/AddLLD.cmake |  5 +++--
+ 2 files changed, 35 insertions(+), 2 deletions(-)
 
 diff --git a/lld/CMakeLists.txt b/lld/CMakeLists.txt
-index 2e99564f4..5bb3d9ec0 100644
+index 2e99564f4..9f72266b3 100644
 --- a/lld/CMakeLists.txt
 +++ b/lld/CMakeLists.txt
 @@ -189,9 +189,19 @@ include_directories(BEFORE
@@ -23,7 +23,7 @@ index 2e99564f4..5bb3d9ec0 100644
 +
 +  add_custom_target(lld-headers)
 +  set_target_properties(lld-headers PROPERTIES FOLDER "Misc")
-+  
++
 +  if(NOT LLVM_ENABLE_IDE)
 +    add_llvm_install_targets(install-lld-headers
 +                            DEPENDS lld-headers
@@ -60,10 +60,20 @@ index 2e99564f4..5bb3d9ec0 100644
 +
  add_subdirectory(cmake/modules)
 diff --git a/lld/cmake/modules/AddLLD.cmake b/lld/cmake/modules/AddLLD.cmake
-index 9883475d1..b2f597191 100644
+index 9883475d1..5f751fb4a 100644
 --- a/lld/cmake/modules/AddLLD.cmake
 +++ b/lld/cmake/modules/AddLLD.cmake
-@@ -21,7 +21,7 @@ macro(add_lld_library name)
+@@ -13,7 +13,8 @@ macro(add_lld_library name)
+   set_target_properties(${name} PROPERTIES FOLDER "lld libraries")
+ 
+   if (NOT LLVM_INSTALL_TOOLCHAIN_ONLY)
+-    get_target_export_arg(${name} LLD export_to_lldtargets)
++    set(umbrella UMBRELLA lld-libraries)
++    get_target_export_arg(${name} LLD export_to_lldtargets ${umbrella})
+     install(TARGETS ${name}
+       COMPONENT ${name}
+       ${export_to_lldtargets}
+@@ -21,7 +22,7 @@ macro(add_lld_library name)
        ARCHIVE DESTINATION lib${LLVM_LIBDIR_SUFFIX}
        RUNTIME DESTINATION bin)
  
