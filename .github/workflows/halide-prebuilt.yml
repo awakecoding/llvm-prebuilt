@@ -49,7 +49,7 @@ jobs:
         shell: pwsh
         run: |
           $CLANG_LLVM_OS="windows"
-          $CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.3"
+          $CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.4"
           $CLANG_LLVM_NAME="clang+llvm-12.0.1-x86_64-${CLANG_LLVM_OS}"
           wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
           tar -xf "${CLANG_LLVM_NAME}.tar.xz" -C "C:/temp"
@@ -61,7 +61,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           CLANG_LLVM_OS="macos"
-          CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.3"
+          CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.4"
           CLANG_LLVM_NAME="clang+llvm-12.0.1-x86_64-${CLANG_LLVM_OS}"
           wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
           tar -xf "${CLANG_LLVM_NAME}.tar.xz" -C /tmp
@@ -73,7 +73,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           CLANG_LLVM_OS="ubuntu-$(lsb_release -rs)"
-          CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.3"
+          CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.4"
           CLANG_LLVM_NAME="clang+llvm-12.0.1-x86_64-${CLANG_LLVM_OS}"
           wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
           tar -xf "${CLANG_LLVM_NAME}.tar.xz" -C /tmp
@@ -95,7 +95,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON `
             -DWITH_TESTS=OFF -DWITH_APPS=OFF -DWITH_TUTORIALS=OFF `
             -DWITH_DOCS=OFF -DWITH_UTILS=OFF -DWITH_PYTHON_BINDINGS=OFF `
-            -DTARGET_WEBASSEMBLY=OFF -DLLVM_DIR="$Env:LLVM_DIR" -Wno-dev `
+            -DTARGET_WEBASSEMBLY=ON -DLLVM_DIR="$Env:LLVM_DIR" -Wno-dev `
             -DCMAKE_INSTALL_PREFIX="halide-install"
 
       - name: Build Halide
@@ -118,7 +118,6 @@ jobs:
           $PACKAGE_NAME="halide-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}"
           mv llvm-install $PACKAGE_NAME
           cmd.exe /c "7z a -ttar -snl -so $PACKAGE_NAME.tar $PACKAGE_NAME | 7z a -si $PACKAGE_NAME.tar.xz"
-
 
       - name: Upload Halide package
         uses: actions/upload-artifact@v2
