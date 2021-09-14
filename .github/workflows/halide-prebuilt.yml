@@ -25,7 +25,7 @@ jobs:
       - name: Configure Windows runner
         if: runner.os == 'Windows'
         run: |
-          choco install ninja 7zip
+          choco install ninja 7zip wget
 
       - name: Configure macOS runner
         if: runner.os == 'macOS'
@@ -34,34 +34,29 @@ jobs:
           echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
 
       - name: Configure Linux runner
+        if: runner.os == 'Linux'
         run: |
           sudo apt update
           sudo apt install git xz-utils ninja-build
-
-      - name: Enable Windows environment
-        if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: amd64
 
       - name: Install clang+llvm
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $CLANG_LLVM_OS="windows"
-          $CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.3"
+          $CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.4"
           $CLANG_LLVM_NAME="clang+llvm-12.0.1-x86_64-${CLANG_LLVM_OS}"
           wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
-          tar -xf "${CLANG_LLVM_NAME}.tar.xz" -C "C:/temp"
+          cmd.exe /c "7z.exe x ${CLANG_LLVM_NAME}.tar.xz -so | 7z x -si -ttar -o`"C:/temp`""
           mv "C:/temp/${CLANG_LLVM_NAME}" "C:/llvm"
           echo "LLVM_DIR=C:/llvm/lib/cmake/llvm" >> $Env:GITHUB_ENV
-          echo "PATH=$PATH;C:/llvm/bin" >> $Env:GITHUB_ENV
+          echo "PATH=$Env:PATH;C:/llvm/bin" >> $Env:GITHUB_ENV
 
       - name: Install clang+llvm
         if: runner.os == 'macOS'
         run: |
           CLANG_LLVM_OS="macos"
-          CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.3"
+          CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.4"
           CLANG_LLVM_NAME="clang+llvm-12.0.1-x86_64-${CLANG_LLVM_OS}"
           wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
           tar -xf "${CLANG_LLVM_NAME}.tar.xz" -C /tmp
@@ -73,7 +68,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           CLANG_LLVM_OS="ubuntu-$(lsb_release -rs)"
-          CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.3"
+          CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.4"
           CLANG_LLVM_NAME="clang+llvm-12.0.1-x86_64-${CLANG_LLVM_OS}"
           wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
           tar -xf "${CLANG_LLVM_NAME}.tar.xz" -C /tmp
@@ -88,6 +83,12 @@ jobs:
           ref: v${{matrix.version}}
           path: halide
 
+      - name: Enable Windows environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+
       - name: Configure Halide
         shell: pwsh
         run: |
@@ -95,7 +96,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON `
             -DWITH_TESTS=OFF -DWITH_APPS=OFF -DWITH_TUTORIALS=OFF `
             -DWITH_DOCS=OFF -DWITH_UTILS=OFF -DWITH_PYTHON_BINDINGS=OFF `
-            -DTARGET_WEBASSEMBLY=OFF -DLLVM_DIR="$Env:LLVM_DIR" -Wno-dev `
+            -DTARGET_WEBASSEMBLY=ON -DLLVM_DIR="$Env:LLVM_DIR" -Wno-dev `
             -DCMAKE_INSTALL_PREFIX="halide-install"
 
       - name: Build Halide
@@ -116,9 +117,8 @@ jobs:
         shell: pwsh
         run: |
           $PACKAGE_NAME="halide-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}"
-          mv llvm-install $PACKAGE_NAME
+          mv halide-install $PACKAGE_NAME
           cmd.exe /c "7z a -ttar -snl -so $PACKAGE_NAME.tar $PACKAGE_NAME | 7z a -si $PACKAGE_NAME.tar.xz"
-
 
       - name: Upload Halide package
         uses: actions/upload-artifact@v2
