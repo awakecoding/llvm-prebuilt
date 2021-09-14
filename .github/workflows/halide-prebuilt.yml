@@ -34,6 +34,7 @@ jobs:
           echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
 
       - name: Configure Linux runner
+        if: runner.os == 'Linux'
         run: |
           sudo apt update
           sudo apt install git xz-utils ninja-build
