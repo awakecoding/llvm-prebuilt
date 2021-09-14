@@ -56,7 +56,7 @@ jobs:
           cmd.exe /c "7z.exe x ${CLANG_LLVM_NAME}.tar.xz -so | 7z x -si -ttar -o`"C:/temp`""
           mv "C:/temp/${CLANG_LLVM_NAME}" "C:/llvm"
           echo "LLVM_DIR=C:/llvm/lib/cmake/llvm" >> $Env:GITHUB_ENV
-          echo "PATH=$PATH;C:/llvm/bin" >> $Env:GITHUB_ENV
+          echo "PATH=$Env:PATH;C:/llvm/bin" >> $Env:GITHUB_ENV
 
       - name: Install clang+llvm
         if: runner.os == 'macOS'
