@@ -39,12 +39,6 @@ jobs:
           sudo apt update
           sudo apt install git xz-utils ninja-build
 
-      - name: Enable Windows environment
-        if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: amd64
-
       - name: Install clang+llvm
         if: runner.os == 'Windows'
         shell: pwsh
@@ -88,6 +82,12 @@ jobs:
           repository: halide/Halide
           ref: v${{matrix.version}}
           path: halide
+
+      - name: Enable Windows environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
 
       - name: Configure Halide
         shell: pwsh
