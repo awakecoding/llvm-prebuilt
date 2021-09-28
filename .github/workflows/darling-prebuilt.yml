@@ -23,7 +23,7 @@ jobs:
           sudo apt install git cmake ninja-build xz-utils
           sudo apt install bison flex pkg-config libfuse-dev libudev-dev \
             linux-headers-generic gcc-multilib libcairo2-dev libgl1-mesa-dev libglu1-mesa-dev libtiff5-dev \
-            libfreetype6-dev git libelf-dev libxml2-dev libegl1-mesa-dev libfontconfig1-dev libbsd-dev \
+            libfreetype6-dev libelf-dev libxml2-dev libegl1-mesa-dev libfontconfig1-dev libbsd-dev \
             libxrandr-dev libxcursor-dev libgif-dev libavutil-dev libpulse-dev libavformat-dev libavcodec-dev \
             libavresample-dev libdbus-1-dev libxkbfile-dev libssl-dev
           sudo apt install python2 2&>/dev/null || true
@@ -53,9 +53,9 @@ jobs:
       - name: Configure Darling
         run: |
           cmake -G Ninja -S darling -B darling-build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DFULL_BUILD=OFF \
-            -DTARGET_i386=OFF -Wno-dev \
+            -DFULL_BUILD=ON \
+            -DTARGET_i386=OFF \
+            -DADDITIONAL_PACKAGES=ON \
             -DCMAKE_INSTALL_PREFIX="/opt/darling"
 
       - name: Build Darling
