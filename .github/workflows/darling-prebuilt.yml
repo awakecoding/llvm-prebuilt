@@ -64,8 +64,8 @@ jobs:
 
       - name: Install Darling
         run: |
-          cmake --install darling-build
-          ninja -C darling-build lkm_install
+          sudo cmake --install darling-build
+          sudo ninja -C darling-build lkm_install
 
       - name: Package Darling
         run: |
