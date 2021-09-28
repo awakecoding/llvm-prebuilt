@@ -1,0 +1,76 @@
+name: darling prebuilt
+on: workflow_dispatch
+jobs:
+  build:
+    name: darling [${{matrix.arch}}-${{matrix.os}}]
+    runs-on: ${{matrix.runner}}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [ x86_64 ]
+        os: [ ubuntu-18.04, ubuntu-20.04 ]
+
+        include:
+          - os: ubuntu-18.04
+            runner: ubuntu-18.04
+          - os: ubuntu-20.04
+            runner: ubuntu-20.04
+  
+    steps:
+      - name: Configure runner
+        run: |
+          sudo apt update
+          sudo apt install git cmake ninja-build xz-utils
+          sudo apt install bison flex pkg-config libfuse-dev libudev-dev \
+            linux-headers-generic gcc-multilib libcairo2-dev libgl1-mesa-dev libglu1-mesa-dev libtiff5-dev \
+            libfreetype6-dev git libelf-dev libxml2-dev libegl1-mesa-dev libfontconfig1-dev libbsd-dev \
+            libxrandr-dev libxcursor-dev libgif-dev libavutil-dev libpulse-dev libavformat-dev libavcodec-dev \
+            libavresample-dev libdbus-1-dev libxkbfile-dev libssl-dev
+          sudo apt install python2 2&>/dev/null || true
+
+      - name: Install clang+llvm
+        run: |
+          CLANG_LLVM_OS="ubuntu-$(lsb_release -rs)"
+          CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.4"
+          CLANG_LLVM_NAME="clang+llvm-12.0.1-x86_64-${CLANG_LLVM_OS}"
+          wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
+          tar -xf "${CLANG_LLVM_NAME}.tar.xz" -C /tmp
+          sudo mv "/tmp/${CLANG_LLVM_NAME}" /opt/llvm
+          echo "LLVM_DIR=/opt/llvm/lib/cmake/llvm" >> $GITHUB_ENV
+          echo "PATH=$PATH:/opt/llvm/bin" >> $GITHUB_ENV
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+
+      - name: Clone Darling
+        uses: actions/checkout@v2
+        with:
+          repository: darlinghq/darling
+          ref: master
+          path: darling
+          submodules: recursive
+          lfs: true
+
+      - name: Configure Darling
+        run: |
+          cmake -G Ninja -S darling -B darling-build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DFULL_BUILD=OFF \
+            -DTARGET_i386=OFF -Wno-dev \
+            -DCMAKE_INSTALL_PREFIX="/opt/darling"
+
+      - name: Build Darling
+        run: cmake --build darling-build
+
+      - name: Install Darling
+        run: cmake --install darling-build
+
+      - name: Package Darling
+        run: |
+          PACKAGE_NAME="darling-${{matrix.arch}}-${{matrix.os}}"
+          tar -cJf ${PACKAGE_NAME}.tar.xz /opt/darling
+
+      - name: Upload Darling package
+        uses: actions/upload-artifact@v2
+        with:
+          name: darling-${{matrix.arch}}-${{matrix.os}}
+          path: darling-${{matrix.arch}}-${{matrix.os}}.tar.xz
