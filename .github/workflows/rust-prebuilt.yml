@@ -45,11 +45,12 @@ jobs:
           python-version: '3.9'
 
       - name: Clone Rust ${{matrix.version}}
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: rust-lang/rust
           ref: ${{matrix.version}}
           submodules: true
+          fetch-depth: 1
           path: rust
 
       - name: Configure Rust
