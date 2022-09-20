@@ -60,7 +60,7 @@ jobs:
           $config = @(
             "changelog-seen=2",
             "[llvm]",
-            "download-ci-llvm=true",
+            "download-ci-llvm=false",
             "ninja=true",
             "[build]",
             "[install]",
@@ -78,4 +78,3 @@ jobs:
         run: |
           Remove-Item Env:GITHUB_ACTIONS
           python x.py build
-
