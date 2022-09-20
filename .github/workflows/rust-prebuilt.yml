@@ -60,7 +60,7 @@ jobs:
           $config = @(
             "changelog-seen=2",
             "[llvm]",
-            "download-llvm-ci=true",
+            "download-ci-llvm=true",
             "ninja=true",
             "[build]",
             "[install]",
