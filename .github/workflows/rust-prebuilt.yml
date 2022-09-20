@@ -39,6 +39,13 @@ jobs:
           sudo apt update
           sudo apt install ninja-build xz-utils
 
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        working-directory: rust
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+
       - name: Clone Rust ${{matrix.version}}
         uses: actions/checkout@v2
         with:
@@ -67,9 +74,7 @@ jobs:
           Set-Content -Path .\config.toml -Value $config
 
       - name: Build Rust
-        uses: actions/setup-python@v4
+        shell: pwsh
         working-directory: rust
-        with:
-          python-version: '3.9'
-          cache: 'pip'
-        run: python x.py build
+        run: |
+          python x.py build
