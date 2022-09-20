@@ -1,0 +1,75 @@
+name: Rust prebuilt
+on: workflow_dispatch
+jobs:
+  build:
+    name: Rust [${{matrix.arch}}-${{matrix.os}}]
+    runs-on: ${{matrix.runner}}
+    strategy:
+      fail-fast: true
+      matrix:
+        arch: [ x86_64 ]
+        os: [ windows, macos, ubuntu-18.04 ]
+        version: [ 1.63.0 ]
+
+        include:
+          - os: windows
+            runner: windows-2022
+          - os: macos
+            runner: macos-latest
+          - os: ubuntu-18.04
+            runner: ubuntu-18.04
+  
+    steps:
+      - name: Configure Windows runner
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install ninja 7zip
+          Install-Module VsDevShell -Force
+
+      - name: Configure macOS runner
+        if: runner.os == 'macOS'
+        run: |
+          brew install ninja
+          echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
+
+      - name: Configure Linux runner
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt update
+          sudo apt install ninja-build xz-utils
+
+      - name: Clone Rust ${{matrix.version}}
+        uses: actions/checkout@v2
+        with:
+          repository: rust-lang/rust
+          ref: v${{matrix.version}}
+          submodules: true
+          path: rust
+
+      - name: Configure Rust
+        shell: pwsh
+        working-directory: rust
+        run: |
+          $config = @(
+            "changelog-seen=2",
+            "[llvm]",
+            "download-llvm-ci=true",
+            "ninja=true",
+            "[build]",
+            "[install]",
+            "prefix=`"/opt/rust`"",
+            "[rust]",
+            "[target.x86_64-unknown-linux-gnu]",
+            "[dist]",
+            "compression-formats=[`"xz`"]"
+          )
+          Set-Content -Path .\config.toml -Value $config
+
+      - name: Build Rust
+        uses: actions/setup-python@v4
+        working-directory: rust
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+        run: python x.py build
