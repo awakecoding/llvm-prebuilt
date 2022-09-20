@@ -48,7 +48,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: rust-lang/rust
-          ref: v${{matrix.version}}
+          ref: ${{matrix.version}}
           submodules: true
           path: rust
 
