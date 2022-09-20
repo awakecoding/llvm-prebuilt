@@ -76,10 +76,12 @@ jobs:
         shell: pwsh
         working-directory: rust
         run: |
+          Remove-Item Env:GITHUB_ACTIONS
           python x.py build
 
       - name: Build Rust stage2
         shell: pwsh
         working-directory: rust
         run: |
+          Remove-Item Env:GITHUB_ACTIONS
           python x.py build --stage 2 compiler/rustc
