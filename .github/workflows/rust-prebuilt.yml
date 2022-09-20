@@ -76,4 +76,4 @@ jobs:
         shell: pwsh
         working-directory: rust
         run: |
-          python x.py build
+          python x.py build --stage 2 compiler/rustc
