@@ -60,7 +60,7 @@ jobs:
           $config = @(
             "changelog-seen=2",
             "[llvm]",
-            "download-ci-llvm=true",
+            "download-ci-llvm=false",
             "ninja=true",
             "[build]",
             "[install]",
@@ -72,7 +72,13 @@ jobs:
           )
           Set-Content -Path .\config.toml -Value $config
 
-      - name: Build Rust
+      - name: Build Rust stage1
+        shell: pwsh
+        working-directory: rust
+        run: |
+          python x.py build
+
+      - name: Build Rust stage2
         shell: pwsh
         working-directory: rust
         run: |
