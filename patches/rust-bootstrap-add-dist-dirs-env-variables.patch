@@ -1,0 +1,34 @@
+From d91ad9dda950de136024b49ff3606d52b5227645 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marc-Andr=C3=A9=20Moreau?= <mamoreau@devolutions.net>
+Date: Wed, 21 Sep 2022 15:34:19 -0400
+Subject: [PATCH] add RUST_OUT_DIST_DIR, RUST_TMP_DIST_DIR environment
+ variables
+
+---
+ src/bootstrap/dist.rs | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/bootstrap/dist.rs b/src/bootstrap/dist.rs
+index b1fae356d89..62e666937f1 100644
+--- a/src/bootstrap/dist.rs
++++ b/src/bootstrap/dist.rs
+@@ -28,10 +28,16 @@ pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
+ }
+ 
+ pub(crate) fn distdir(builder: &Builder<'_>) -> PathBuf {
++    if let Ok(out_dist_dir) = env::var("RUST_OUT_DIST_DIR") {
++        return Path::new(&out_dist_dir).to_path_buf();
++    }
+     builder.out.join("dist")
+ }
+ 
+ pub fn tmpdir(builder: &Builder<'_>) -> PathBuf {
++    if let Ok(tmp_dist_dir) = env::var("RUST_TMP_DIST_DIR") {
++        return Path::new(&tmp_dist_dir).to_path_buf();
++    }
+     builder.out.join("tmp/dist")
+ }
+ 
+-- 
+2.25.1
+

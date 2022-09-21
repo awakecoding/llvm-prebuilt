@@ -61,6 +61,7 @@ jobs:
       - name: Patch Rust
         run: |
           git -C rust apply ../llvm-prebuilt/patches/rust-allow-dynamic-linking-for-ios-targets.patch
+          git -C rust apply ../llvm-prebuilt/patches/rust-bootstrap-add-dist-dirs-env-variables.patch
 
       - name: Configure Rust
         shell: pwsh
@@ -92,6 +93,9 @@ jobs:
 
       - name: Package Rust
         shell: pwsh
+        env:
+          RUST_OUT_DIST_DIR: ${{ runner.temp }}/rust-dist
+          RUST_TMP_DIST_DIR: ${{ runner.temp }}/temp-dist
         working-directory: rust
         run: |
           Remove-Item Env:GITHUB_ACTIONS
@@ -101,4 +105,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: rust-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
-          path: rust/build/dist/
+          path: ${{ runner.temp }}/rust-dist
