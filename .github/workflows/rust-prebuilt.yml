@@ -44,6 +44,11 @@ jobs:
         with:
           python-version: '3.9'
 
+      - name: Clone project
+        uses: actions/checkout@v2
+        with:
+          path: llvm-prebuilt
+
       - name: Clone Rust ${{matrix.version}}
         uses: actions/checkout@v3
         with:
