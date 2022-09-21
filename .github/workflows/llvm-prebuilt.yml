@@ -76,7 +76,7 @@ jobs:
 
       - name: Patch LLVM
         run: |
-          git -C llvm-project apply ../llvm-prebuilt/patches/llvm-add-lld-install-targets.patch
+          git -C llvm-project apply ../llvm-prebuilt/patches/llvm-12-add-lld-install-targets.patch
 
       - name: Enable Windows host environment
         if: runner.os == 'Windows'
