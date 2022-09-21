@@ -5,7 +5,7 @@ jobs:
     name: Rust [${{matrix.arch}}-${{matrix.os}}]
     runs-on: ${{matrix.runner}}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         arch: [ x86_64 ]
         os: [ windows, macos, ubuntu-20.04 ]
@@ -58,8 +58,7 @@ jobs:
           fetch-depth: 1
           path: rust
 
-      - name: Patch LLVM
-        if: runner.os != 'Windows'
+      - name: Patch Rust
         run: |
           git -C rust apply ../llvm-prebuilt/patches/rust-allow-dynamic-linking-for-ios-targets.patch
 
@@ -79,6 +78,7 @@ jobs:
             "[rust]",
             "[target.x86_64-unknown-linux-gnu]",
             "[dist]",
+            "src-tarball=false",
             "compression-formats=[`"xz`"]"
           )
           Set-Content -Path .\config.toml -Value $config
