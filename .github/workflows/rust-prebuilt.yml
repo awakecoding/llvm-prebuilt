@@ -5,10 +5,10 @@ jobs:
     name: Rust [${{matrix.arch}}-${{matrix.os}}]
     runs-on: ${{matrix.runner}}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         arch: [ x86_64 ]
-        os: [ windows, macos, ubuntu-18.04 ]
+        os: [ windows, macos, ubuntu-20.04 ]
         version: [ 1.63.0 ]
 
         include:
@@ -16,8 +16,8 @@ jobs:
             runner: windows-2022
           - os: macos
             runner: macos-latest
-          - os: ubuntu-18.04
-            runner: ubuntu-18.04
+          - os: ubuntu-20.04
+            runner: ubuntu-20.04
   
     steps:
       - name: Configure Windows runner
@@ -39,13 +39,29 @@ jobs:
           sudo apt update
           sudo apt install ninja-build xz-utils
 
-      - name: Clone Rust ${{matrix.version}}
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Clone project
         uses: actions/checkout@v2
         with:
+          path: llvm-prebuilt
+
+      - name: Clone Rust ${{matrix.version}}
+        uses: actions/checkout@v3
+        with:
           repository: rust-lang/rust
-          ref: v${{matrix.version}}
+          ref: ${{matrix.version}}
           submodules: true
+          fetch-depth: 1
           path: rust
+
+      - name: Patch Rust
+        run: |
+          git -C rust apply ../llvm-prebuilt/patches/rust-allow-dynamic-linking-for-ios-targets.patch
+          git -C rust apply ../llvm-prebuilt/patches/rust-bootstrap-add-dist-dirs-env-variables.patch
 
       - name: Configure Rust
         shell: pwsh
@@ -54,22 +70,39 @@ jobs:
           $config = @(
             "changelog-seen=2",
             "[llvm]",
-            "download-llvm-ci=true",
+            "download-ci-llvm=false",
             "ninja=true",
+            "targets=`"X86;ARM;AArch64;WebAssembly`""
             "[build]",
             "[install]",
             "prefix=`"/opt/rust`"",
             "[rust]",
             "[target.x86_64-unknown-linux-gnu]",
             "[dist]",
+            "src-tarball=false",
             "compression-formats=[`"xz`"]"
           )
           Set-Content -Path .\config.toml -Value $config
 
       - name: Build Rust
-        uses: actions/setup-python@v4
+        shell: pwsh
         working-directory: rust
+        run: |
+          Remove-Item Env:GITHUB_ACTIONS
+          python x.py build
+
+      - name: Package Rust
+        shell: pwsh
+        env:
+          RUST_OUT_DIST_DIR: ${{ runner.temp }}/rust-dist
+          RUST_TMP_DIST_DIR: ${{ runner.temp }}/temp-dist
+        working-directory: rust
+        run: |
+          Remove-Item Env:GITHUB_ACTIONS
+          python x.py dist
+
+      - name: Upload Rust
+        uses: actions/upload-artifact@v3
         with:
-          python-version: '3.9'
-          cache: 'pip'
-        run: python x.py build
+          name: rust-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
+          path: ${{ runner.temp }}/rust-dist
