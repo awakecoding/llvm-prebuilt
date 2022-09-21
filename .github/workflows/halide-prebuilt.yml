@@ -8,16 +8,14 @@ jobs:
       fail-fast: false
       matrix:
         arch: [ x86_64 ]
-        os: [ windows, macos, ubuntu-18.04, ubuntu-20.04 ]
+        os: [ windows, macos, ubuntu-20.04 ]
         version: [ 12.0.1 ]
 
         include:
           - os: windows
-            runner: windows-2019
+            runner: windows-2022
           - os: macos
             runner: macos-latest
-          - os: ubuntu-18.04
-            runner: ubuntu-18.04
           - os: ubuntu-20.04
             runner: ubuntu-20.04
   
