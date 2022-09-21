@@ -59,6 +59,7 @@ jobs:
           path: rust
 
       - name: Patch LLVM
+        if: runner.os != 'Windows'
         run: |
           git -C rust apply ../llvm-prebuilt/patches/rust-allow-dynamic-linking-for-ios-targets.patch
 
