@@ -62,6 +62,7 @@ jobs:
             "[llvm]",
             "download-ci-llvm=false",
             "ninja=true",
+            "targets=`"X86;ARM;AArch64;WebAssembly`""
             "[build]",
             "[install]",
             "prefix=`"/opt/rust`"",
@@ -78,3 +79,10 @@ jobs:
         run: |
           Remove-Item Env:GITHUB_ACTIONS
           python x.py build
+
+      - name: Package Rust
+        shell: pwsh
+        working-directory: rust
+        run: |
+          Remove-Item Env:GITHUB_ACTIONS
+          python x.py dist
