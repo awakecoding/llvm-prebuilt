@@ -8,7 +8,7 @@ jobs:
       fail-fast: true
       matrix:
         arch: [ x86_64 ]
-        os: [ windows, macos, ubuntu-18.04 ]
+        os: [ windows, macos, ubuntu-20.04 ]
         version: [ 1.63.0 ]
 
         include:
@@ -16,8 +16,8 @@ jobs:
             runner: windows-2022
           - os: macos
             runner: macos-latest
-          - os: ubuntu-18.04
-            runner: ubuntu-18.04
+          - os: ubuntu-20.04
+            runner: ubuntu-20.04
   
     steps:
       - name: Configure Windows runner
@@ -53,6 +53,10 @@ jobs:
           fetch-depth: 1
           path: rust
 
+      - name: Patch LLVM
+        run: |
+          git -C rust apply ../llvm-prebuilt/patches/rust-allow-dynamic-linking-for-ios-targets.patch
+
       - name: Configure Rust
         shell: pwsh
         working-directory: rust
@@ -86,3 +90,9 @@ jobs:
         run: |
           Remove-Item Env:GITHUB_ACTIONS
           python x.py dist
+
+      - name: Upload Rust
+        uses: actions/upload-artifact@v3
+        with:
+          name: rust-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
+          path: rust/build/dist/
