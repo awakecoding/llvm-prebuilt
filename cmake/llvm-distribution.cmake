@@ -112,18 +112,28 @@ set(LLVM_TOOLCHAIN_TOOLS
     ${LLVM_BINUTILS_COMPONENTS}
     CACHE STRING "")
 
-set(LLD_EXPORTED_TARGETS
-    lldCommon
-    lldCore
-    lldDriver
-    lldMachO
-    lldYAML
-    lldReaderWriter
-    lldCOFF
-    lldELF
-    lldMachO2
-    lldMinGW
-    lldWasm)
+if (ENV{LLVM_VERSION} MATCHES "12.0.1")
+    set(LLD_EXPORTED_TARGETS
+        lldCommon
+        lldCore
+        lldDriver
+        lldMachO
+        lldYAML
+        lldReaderWriter
+        lldCOFF
+        lldELF
+        lldMachO2
+        lldMinGW
+        lldWasm)
+else()
+    set(LLD_EXPORTED_TARGETS
+        lldCommon
+        lldCOFF
+        lldELF
+        lldMachO
+        lldMinGW
+        lldWasm)
+endif()
 
 set(LLVM_DEVELOPMENT_COMPONENTS
     cmake-exports

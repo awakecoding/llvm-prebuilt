@@ -116,6 +116,7 @@ jobs:
           echo "LLVM_TABLEGEN=$HostBinPath/llvm-tblgen$ExeExt" >> $Env:GITHUB_ENV
           echo "CLANG_TABLEGEN=$HostBinPath/clang-tblgen$ExeExt" >> $Env:GITHUB_ENV
           echo "LLVM_CONFIG_PATH=$HostBinPath/llvm-config$ExeExt" >> $Env:GITHUB_ENV
+          echo "LLVM_VERSION=${{matrix.version}}" >> $Env:GITHUB_ENV
 
       - name: Enable Windows target environment
         if: runner.os == 'Windows'
