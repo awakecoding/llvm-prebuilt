@@ -72,7 +72,7 @@ jobs:
       - name: Patch Rust
         shell: pwsh
         run: |
-          git -C rust apply ../llvm-prebuilt/patches/rust-allow-dynamic-linking-for-ios-targets.patch
+          git -C rust apply ../llvm-prebuilt/patches/rust-${{matrix.version}}-allow-dynamic-linking-for-ios-targets.patch
 
       - name: Configure Rust
         shell: pwsh
