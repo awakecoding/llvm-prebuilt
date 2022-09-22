@@ -8,7 +8,7 @@ jobs:
       fail-fast: false
       matrix:
         arch: [ x86_64 ]
-        os: [ windows, macos, ubuntu-20.04 ]
+        os: [ windows, macos, ubuntu-20.04, ubuntu-22.04 ]
         version: [ 1.63.0 ]
 
         include:
@@ -18,6 +18,8 @@ jobs:
             runner: macos-latest
           - os: ubuntu-20.04
             runner: ubuntu-20.04
+          - os: ubuntu-22.04
+            runner: ubuntu-22.04
   
     steps:
       - name: Configure Windows runner
@@ -59,6 +61,7 @@ jobs:
           path: rust
 
       - name: Patch Rust
+        shell: pwsh
         run: |
           git -C rust apply ../llvm-prebuilt/patches/rust-allow-dynamic-linking-for-ios-targets.patch
           git -C rust apply ../llvm-prebuilt/patches/rust-bootstrap-add-dist-dirs-env-variables.patch
@@ -94,8 +97,8 @@ jobs:
       - name: Package Rust
         shell: pwsh
         env:
-          RUST_OUT_DIST_DIR: ${{ runner.temp }}/rust-dist
-          RUST_TMP_DIST_DIR: ${{ runner.temp }}/temp-dist
+          RUST_OUT_DIST_DIR: ${{runner.temp}}/rust-dist
+          RUST_TMP_DIST_DIR: ${{runner.temp}}/temp-dist
         working-directory: rust
         run: |
           Remove-Item Env:GITHUB_ACTIONS
@@ -105,4 +108,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: rust-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
-          path: ${{ runner.temp }}/rust-dist
+          path: ${{runner.temp}}/rust-dist

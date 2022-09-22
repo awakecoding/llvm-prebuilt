@@ -3,7 +3,7 @@ on: workflow_dispatch
 jobs:
   build:
     name: Xcode bundle
-    runs-on: macos-10.15
+    runs-on: macos-latest
     steps:
       - name: Copy Xcode toolchain
         run: |
