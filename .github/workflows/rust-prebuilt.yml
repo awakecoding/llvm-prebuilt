@@ -78,6 +78,7 @@ jobs:
         shell: pwsh
         working-directory: rust
         run: |
+          $RustBuildDir = "${{steps.dynamic-variables.outputs.rust-build-dir}}".Replace('\','\\')
           $config = @(
             "changelog-seen=2",
             "[llvm]",
@@ -86,7 +87,7 @@ jobs:
             "targets=`"X86;ARM;AArch64;WebAssembly`""
             "[build]",
             "docs=false",
-            "build-dir=`"${{steps.dynamic-variables.outputs.rust-build-dir}}`"",
+            "build-dir=`"$RustBuildDir`"",
             "[install]",
             "[rust]",
             "channel=`"stable`"",
