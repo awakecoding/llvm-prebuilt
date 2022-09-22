@@ -8,13 +8,11 @@ jobs:
       fail-fast: false
       matrix:
         arch: [ x86_64 ]
-        os: [ ubuntu-20.04, ubuntu-22.04 ]
+        os: [ ubuntu-20.04 ]
 
         include:
           - os: ubuntu-20.04
             runner: ubuntu-20.04
-          - os: ubuntu-22.04
-            runner: ubuntu-22.04
   
     steps:
       - name: Configure runner
@@ -41,7 +39,7 @@ jobs:
           echo "CXX=clang++" >> $GITHUB_ENV
 
       - name: Clone Darling
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: darlinghq/darling
           ref: master
