@@ -2,14 +2,14 @@ name: Rust prebuilt
 on: workflow_dispatch
 jobs:
   build:
-    name: Rust [${{matrix.arch}}-${{matrix.os}}]
+    name: Rust [${{matrix.arch}}-${{matrix.os}}-${{matrix.version}}]
     runs-on: ${{matrix.runner}}
     strategy:
       fail-fast: false
       matrix:
         arch: [ x86_64 ]
         os: [ windows, macos, ubuntu-20.04, ubuntu-22.04 ]
-        version: [ 1.63.0 ]
+        version: [ 1.64.0 ]
 
         include:
           - os: windows
@@ -47,11 +47,8 @@ jobs:
         id: dynamic-variables
         shell: pwsh
         run: |
-          $OutputPath = if ($IsWindows) { "C:\rust" } else { "${{runner.temp}}" }
-          $RustOutDistDir = Join-Path $OutputPath "rust-dist"
-          $RustTmpDistDir = Join-Path $OutputPath "temp-dist"
-          echo "::set-output name=rust-out-dist-dir::$RustOutDistDir"
-          echo "::set-output name=rust-tmp-dist-dir::$RustTmpDistDir"
+          $RustBuildDir = if ($IsWindows) { "C:\rust" } else { "${{runner.temp}}" }
+          echo "::set-output name=rust-build-dir::$RustBuildDir"
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -76,7 +73,6 @@ jobs:
         shell: pwsh
         run: |
           git -C rust apply ../llvm-prebuilt/patches/rust-allow-dynamic-linking-for-ios-targets.patch
-          git -C rust apply ../llvm-prebuilt/patches/rust-bootstrap-add-dist-dirs-env-variables.patch
 
       - name: Configure Rust
         shell: pwsh
@@ -89,10 +85,12 @@ jobs:
             "ninja=true",
             "targets=`"X86;ARM;AArch64;WebAssembly`""
             "[build]",
+            "docs=false",
+            "build-dir=`"${{steps.dynamic-variables.outputs.rust-build-dir}}`"",
             "[install]",
-            "prefix=`"/opt/rust`"",
             "[rust]",
-            "[target.x86_64-unknown-linux-gnu]",
+            "channel=`"stable`"",
+            "dist-src=false",
             "[dist]",
             "src-tarball=false",
             "compression-formats=[`"xz`"]"
@@ -108,9 +106,6 @@ jobs:
 
       - name: Package Rust
         shell: pwsh
-        env:
-          RUST_OUT_DIST_DIR: ${{ steps.dynamic-variables.outputs.rust-out-dist-dir }}
-          RUST_TMP_DIST_DIR: ${{ steps.dynamic-variables.outputs.rust-tmp-dist-dir }}
         working-directory: rust
         run: |
           Remove-Item Env:GITHUB_ACTIONS
@@ -120,4 +115,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: rust-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
-          path: ${{ steps.dynamic-variables.outputs.rust-out-dist-dir }}
+          path: ${{steps.dynamic-variables.outputs.rust-build-dir}}/build/dist

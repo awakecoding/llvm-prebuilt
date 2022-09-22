@@ -2,7 +2,7 @@ name: halide prebuilt
 on: workflow_dispatch
 jobs:
   build:
-    name: halide [${{matrix.arch}}-${{matrix.os}}]
+    name: halide [${{matrix.arch}}-${{matrix.os}}-${{matrix.version}}]
     runs-on: ${{matrix.runner}}
     strategy:
       fail-fast: false
