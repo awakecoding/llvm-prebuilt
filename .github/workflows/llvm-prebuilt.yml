@@ -54,19 +54,22 @@ jobs:
         shell: pwsh
         run: |
           sudo apt update
-          sudo apt install xz-utils libxml2-dev
+          sudo apt install zstd xz-utils libxml2-dev
           sudo apt install ninja-build
           sudo apt install g++-aarch64-linux-gnu
-          $ubuntu_release = $(lsb_release -rs)
           mkdir libxml2-dev-arm64 && cd libxml2-dev-arm64
-          $LibXmlDebFile = if ($ubuntu_release -eq '20.04') {
+          $LibXmlDebFile = if ($(lsb_release -rs) -eq '20.04') {
             "libxml2-dev_2.9.10+dfsg-5ubuntu0.20.04.4_arm64.deb"
           } else {
             "libxml2-dev_2.9.13+dfsg-1build1_arm64.deb"
           }
-          & curl -O -L "http://ports.ubuntu.com/pool/main/libx/libxml2/$LibXmlDebFile"
-          & ar -x "$LibXmlDebFile"
-          & tar -xf data.tar.xz
+          wget -q "http://ports.ubuntu.com/pool/main/libx/libxml2/$LibXmlDebFile"
+          ar -x "$LibXmlDebFile"
+          if (Test-Path 'data.tar.zst') {
+            tar --use-compress-program=unzstd -xf data.tar.zst
+          } else {
+            tar -xf data.tar.xz
+          }
           sudo cp -R ./usr/lib/aarch64-linux-gnu/ /usr/lib/aarch64-linux-gnu
 
       - name: Clone project
