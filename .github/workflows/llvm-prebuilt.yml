@@ -9,11 +9,13 @@ jobs:
       matrix:
         arch: [ x86_64, aarch64 ]
         os: [ windows, macos, ubuntu-20.04, ubuntu-22.04 ]
-        version: [ 12.0.1 ]
+        version: [ 12.0.1, 14.0.6 ]
 
         include:
           - version: 12.0.1
             branch: release/12.x
+          - version: 14.0.6
+            branch: release/14.x
 
           - os: windows
             runner: windows-2022
@@ -89,6 +91,8 @@ jobs:
         run: |
           if ('${{matrix.version}}' -eq '12.0.1') {
             git -C llvm-project apply ../llvm-prebuilt/patches/llvm-12-add-lld-install-targets.patch
+          } else {
+            git -C llvm-project apply ../llvm-prebuilt/patches/llvm-14-add-lld-install-targets.patch
           }
 
       - name: Enable Windows host environment
