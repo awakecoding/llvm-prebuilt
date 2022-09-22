@@ -9,13 +9,11 @@ jobs:
       matrix:
         arch: [ x86_64, aarch64 ]
         os: [ windows, macos, ubuntu-20.04, ubuntu-22.04 ]
-        version: [ 12.0.1, 14.0.6 ]
+        version: [ 12.0.1 ]
 
         include:
           - version: 12.0.1
             branch: release/12.x
-          - version: 14.0.6
-            branch: release/14.x
 
           - os: windows
             runner: windows-2022
