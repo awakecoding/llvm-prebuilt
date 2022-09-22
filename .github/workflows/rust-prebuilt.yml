@@ -2,14 +2,14 @@ name: Rust prebuilt
 on: workflow_dispatch
 jobs:
   build:
-    name: Rust [${{matrix.arch}}-${{matrix.os}}]
+    name: Rust [${{matrix.arch}}-${{matrix.os}}-${{matrix.version}}]
     runs-on: ${{matrix.runner}}
     strategy:
       fail-fast: false
       matrix:
         arch: [ x86_64 ]
-        os: [ windows, macos, ubuntu-20.04 ]
-        version: [ 1.63.0 ]
+        os: [ windows, macos, ubuntu-20.04, ubuntu-22.04 ]
+        version: [ 1.64.0 ]
 
         include:
           - os: windows
@@ -18,6 +18,8 @@ jobs:
             runner: macos-latest
           - os: ubuntu-20.04
             runner: ubuntu-20.04
+          - os: ubuntu-22.04
+            runner: ubuntu-22.04
   
     steps:
       - name: Configure Windows runner
@@ -26,6 +28,8 @@ jobs:
         run: |
           choco install ninja 7zip
           Install-Module VsDevShell -Force
+          docker system prune -a -f # free some space on C:\
+          New-Item -Path "C:\rust" -ItemType Directory | Out-Null
 
       - name: Configure macOS runner
         if: runner.os == 'macOS'
@@ -38,6 +42,13 @@ jobs:
         run: |
           sudo apt update
           sudo apt install ninja-build xz-utils
+
+      - name: Setup dynamic variables
+        id: dynamic-variables
+        shell: pwsh
+        run: |
+          $RustBuildDir = if ($IsWindows) { "C:\rust" } else { "${{runner.temp}}" }
+          echo "::set-output name=rust-build-dir::$RustBuildDir"
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -59,14 +70,15 @@ jobs:
           path: rust
 
       - name: Patch Rust
+        shell: pwsh
         run: |
-          git -C rust apply ../llvm-prebuilt/patches/rust-allow-dynamic-linking-for-ios-targets.patch
-          git -C rust apply ../llvm-prebuilt/patches/rust-bootstrap-add-dist-dirs-env-variables.patch
+          git -C rust apply ../llvm-prebuilt/patches/rust-${{matrix.version}}-allow-dynamic-linking-for-ios-targets.patch
 
       - name: Configure Rust
         shell: pwsh
         working-directory: rust
         run: |
+          $RustBuildDir = "${{steps.dynamic-variables.outputs.rust-build-dir}}".Replace('\','\\')
           $config = @(
             "changelog-seen=2",
             "[llvm]",
@@ -74,10 +86,12 @@ jobs:
             "ninja=true",
             "targets=`"X86;ARM;AArch64;WebAssembly`""
             "[build]",
+            "docs=false",
+            "build-dir=`"$RustBuildDir`"",
             "[install]",
-            "prefix=`"/opt/rust`"",
             "[rust]",
-            "[target.x86_64-unknown-linux-gnu]",
+            "channel=`"stable`"",
+            "dist-src=false",
             "[dist]",
             "src-tarball=false",
             "compression-formats=[`"xz`"]"
@@ -93,9 +107,6 @@ jobs:
 
       - name: Package Rust
         shell: pwsh
-        env:
-          RUST_OUT_DIST_DIR: ${{ runner.temp }}/rust-dist
-          RUST_TMP_DIST_DIR: ${{ runner.temp }}/temp-dist
         working-directory: rust
         run: |
           Remove-Item Env:GITHUB_ACTIONS
@@ -105,4 +116,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: rust-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
-          path: ${{ runner.temp }}/rust-dist
+          path: ${{steps.dynamic-variables.outputs.rust-build-dir}}/build/dist

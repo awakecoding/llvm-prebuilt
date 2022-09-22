@@ -8,12 +8,14 @@ jobs:
       fail-fast: false
       matrix:
         arch: [ x86_64, aarch64 ]
-        os: [ windows, macos, ubuntu-20.04 ]
-        version: [ 12.0.1 ]
+        os: [ windows, macos, ubuntu-20.04, ubuntu-22.04 ]
+        version: [ 12.0.1, 14.0.6 ]
 
         include:
           - version: 12.0.1
             branch: release/12.x
+          - version: 14.0.6
+            branch: release/14.x
 
           - os: windows
             runner: windows-2022
@@ -21,6 +23,8 @@ jobs:
             runner: macos-latest
           - os: ubuntu-20.04
             runner: ubuntu-20.04
+          - os: ubuntu-22.04
+            runner: ubuntu-22.04
 
           - arch: x86_64
             os: windows
@@ -47,19 +51,27 @@ jobs:
           brew install ninja
           echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
 
-      - name: Configure Ubuntu 20.04 runner
-        if: matrix.os == 'ubuntu-20.04'
+      - name: Configure Linux runner
+        if: runner.os == 'Linux'
         shell: pwsh
         run: |
           sudo apt update
-          sudo apt install xz-utils libxml2-dev
+          sudo apt install zstd xz-utils libxml2-dev
           sudo apt install ninja-build
           sudo apt install g++-aarch64-linux-gnu
           mkdir libxml2-dev-arm64 && cd libxml2-dev-arm64
-          $LibXmlDebFile = "libxml2-dev_2.9.10+dfsg-5ubuntu0.20.04.1_arm64.deb"
+          $LibXmlDebFile = if ($(lsb_release -rs) -eq '20.04') {
+            "libxml2-dev_2.9.10+dfsg-5ubuntu0.20.04.4_arm64.deb"
+          } else {
+            "libxml2-dev_2.9.13+dfsg-1build1_arm64.deb"
+          }
           wget -q "http://ports.ubuntu.com/pool/main/libx/libxml2/$LibXmlDebFile"
           ar -x "$LibXmlDebFile"
-          tar -xf data.tar.xz
+          if (Test-Path 'data.tar.zst') {
+            tar --use-compress-program=unzstd -xf data.tar.zst
+          } else {
+            tar -xf data.tar.xz
+          }
           sudo cp -R ./usr/lib/aarch64-linux-gnu/ /usr/lib/aarch64-linux-gnu
 
       - name: Clone project
@@ -75,8 +87,13 @@ jobs:
           path: llvm-project
 
       - name: Patch LLVM
+        shell: pwsh
         run: |
-          git -C llvm-project apply ../llvm-prebuilt/patches/llvm-add-lld-install-targets.patch
+          if ('${{matrix.version}}' -eq '12.0.1') {
+            git -C llvm-project apply ../llvm-prebuilt/patches/llvm-12-add-lld-install-targets.patch
+          } else {
+            git -C llvm-project apply ../llvm-prebuilt/patches/llvm-14-add-lld-install-targets.patch
+          }
 
       - name: Enable Windows host environment
         if: runner.os == 'Windows'
@@ -99,6 +116,7 @@ jobs:
           echo "LLVM_TABLEGEN=$HostBinPath/llvm-tblgen$ExeExt" >> $Env:GITHUB_ENV
           echo "CLANG_TABLEGEN=$HostBinPath/clang-tblgen$ExeExt" >> $Env:GITHUB_ENV
           echo "LLVM_CONFIG_PATH=$HostBinPath/llvm-config$ExeExt" >> $Env:GITHUB_ENV
+          echo "LLVM_VERSION=${{matrix.version}}" >> $Env:GITHUB_ENV
 
       - name: Enable Windows target environment
         if: runner.os == 'Windows'

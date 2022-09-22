@@ -2,22 +2,24 @@ name: halide prebuilt
 on: workflow_dispatch
 jobs:
   build:
-    name: halide [${{matrix.arch}}-${{matrix.os}}]
+    name: halide [${{matrix.arch}}-${{matrix.os}}-${{matrix.version}}]
     runs-on: ${{matrix.runner}}
     strategy:
       fail-fast: false
       matrix:
         arch: [ x86_64 ]
-        os: [ windows, macos, ubuntu-20.04 ]
-        version: [ 12.0.1 ]
+        os: [ windows, macos, ubuntu-20.04, ubuntu-22.04 ]
+        version: [ 12.0.1, 14.0.0 ]
 
         include:
           - os: windows
-            runner: windows-2022
+            runner: windows-2019
           - os: macos
             runner: macos-latest
           - os: ubuntu-20.04
             runner: ubuntu-20.04
+          - os: ubuntu-22.04
+            runner: ubuntu-22.04
   
     steps:
       - name: Configure Windows runner
@@ -65,7 +67,7 @@ jobs:
       - name: Install clang+llvm
         if: runner.os == 'Linux'
         run: |
-          CLANG_LLVM_OS="ubuntu-$(lsb_release -rs)"
+          CLANG_LLVM_OS="ubuntu-20.04"
           CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.4"
           CLANG_LLVM_NAME="clang+llvm-12.0.1-x86_64-${CLANG_LLVM_OS}"
           wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
