@@ -56,9 +56,10 @@ jobs:
         shell: pwsh
         run: |
           sudo apt update
-          sudo apt install zstd xz-utils libxml2-dev
+          sudo apt install zstd xz-utils
           sudo apt install ninja-build
           sudo apt install g++-aarch64-linux-gnu
+          sudo apt install libxml2-dev
           mkdir libxml2-dev-arm64 && cd libxml2-dev-arm64
           $LibXmlDebFile = if ($(lsb_release -rs) -eq '20.04') {
             "libxml2-dev_2.9.10+dfsg-5ubuntu0.20.04.4_arm64.deb"
@@ -75,12 +76,12 @@ jobs:
           sudo cp -R ./usr/lib/aarch64-linux-gnu/ /usr/lib/aarch64-linux-gnu
 
       - name: Clone project
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: llvm-prebuilt
 
       - name: Clone LLVM ${{matrix.version}}
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: llvm/llvm-project
           ref: ${{matrix.branch}}
@@ -152,7 +153,7 @@ jobs:
           cmd.exe /c "7z a -ttar -snl -so clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}} | 7z a -si clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz"
 
       - name: Upload LLVM package
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
           path: clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz

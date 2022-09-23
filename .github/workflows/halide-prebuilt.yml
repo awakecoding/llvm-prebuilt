@@ -13,7 +13,7 @@ jobs:
 
         include:
           - os: windows
-            runner: windows-2019
+            runner: windows-2022
           - os: macos
             runner: macos-latest
           - os: ubuntu-20.04
@@ -77,7 +77,7 @@ jobs:
           echo "PATH=$PATH:/opt/llvm/bin" >> $GITHUB_ENV
 
       - name: Clone Halide ${{matrix.version}}
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: halide/Halide
           ref: v${{matrix.version}}
@@ -92,6 +92,10 @@ jobs:
       - name: Configure Halide
         shell: pwsh
         run: |
+          if ($IsWindows) {
+            $Env:CC="clang-cl"
+            $Env:CXX="clang-cl"
+          }
           cmake -G Ninja -S halide -B halide-build `
             -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON `
             -DWITH_TESTS=OFF -DWITH_APPS=OFF -DWITH_TUTORIALS=OFF `
@@ -121,7 +125,7 @@ jobs:
           cmd.exe /c "7z a -ttar -snl -so $PACKAGE_NAME.tar $PACKAGE_NAME | 7z a -si $PACKAGE_NAME.tar.xz"
 
       - name: Upload Halide package
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: halide-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
           path: halide-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz

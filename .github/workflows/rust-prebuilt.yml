@@ -56,7 +56,7 @@ jobs:
           python-version: '3.9'
 
       - name: Clone project
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: llvm-prebuilt
 
@@ -116,4 +116,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: rust-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
-          path: ${{steps.dynamic-variables.outputs.rust-build-dir}}/build/dist
+          path: ${{steps.dynamic-variables.outputs.rust-build-dir}}/dist
