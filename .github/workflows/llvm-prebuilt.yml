@@ -56,9 +56,10 @@ jobs:
         shell: pwsh
         run: |
           sudo apt update
-          sudo apt install zstd xz-utils libxml2-dev
+          sudo apt install zstd xz-utils
           sudo apt install ninja-build
           sudo apt install g++-aarch64-linux-gnu
+          sudo apt install libxml2-dev
           mkdir libxml2-dev-arm64 && cd libxml2-dev-arm64
           $LibXmlDebFile = if ($(lsb_release -rs) -eq '20.04') {
             "libxml2-dev_2.9.10+dfsg-5ubuntu0.20.04.4_arm64.deb"
@@ -117,6 +118,10 @@ jobs:
           echo "CLANG_TABLEGEN=$HostBinPath/clang-tblgen$ExeExt" >> $Env:GITHUB_ENV
           echo "LLVM_CONFIG_PATH=$HostBinPath/llvm-config$ExeExt" >> $Env:GITHUB_ENV
           echo "LLVM_VERSION=${{matrix.version}}" >> $Env:GITHUB_ENV
+          if ('${{matrix.version}}' -ne '12.0.1') {
+            cmake --build llvm-host --target clang-ast-dump
+            echo "CLANG_AST_DUMP=$HostBinPath/clang-ast-dump$ExeExt" >> $Env:GITHUB_ENV
+          }
 
       - name: Enable Windows target environment
         if: runner.os == 'Windows'
