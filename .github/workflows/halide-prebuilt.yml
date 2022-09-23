@@ -95,9 +95,6 @@ jobs:
           if ($IsWindows) {
             $Env:CC="clang-cl"
             $Env:CXX="clang-cl"
-          } else {
-            $Env:CC="clang"
-            $Env:CXX="clang"
           }
           cmake -G Ninja -S halide -B halide-build `
             -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON `
