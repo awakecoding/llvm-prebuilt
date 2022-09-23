@@ -116,4 +116,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: rust-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
-          path: ${{steps.dynamic-variables.outputs.rust-build-dir}}/build/dist
+          path: ${{steps.dynamic-variables.outputs.rust-build-dir}}/dist
