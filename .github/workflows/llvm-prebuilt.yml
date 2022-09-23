@@ -76,12 +76,12 @@ jobs:
           sudo cp -R ./usr/lib/aarch64-linux-gnu/ /usr/lib/aarch64-linux-gnu
 
       - name: Clone project
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: llvm-prebuilt
 
       - name: Clone LLVM ${{matrix.version}}
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: llvm/llvm-project
           ref: ${{matrix.branch}}
