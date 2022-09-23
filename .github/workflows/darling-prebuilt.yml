@@ -71,7 +71,7 @@ jobs:
           tar -cJf ${PACKAGE_NAME}.tar.xz -C /opt darling
 
       - name: Upload Darling package
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: darling-${{matrix.arch}}-${{matrix.os}}
           path: darling-${{matrix.arch}}-${{matrix.os}}.tar.xz

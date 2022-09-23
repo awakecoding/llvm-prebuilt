@@ -125,7 +125,7 @@ jobs:
           cmd.exe /c "7z a -ttar -snl -so $PACKAGE_NAME.tar $PACKAGE_NAME | 7z a -si $PACKAGE_NAME.tar.xz"
 
       - name: Upload Halide package
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: halide-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
           path: halide-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz
