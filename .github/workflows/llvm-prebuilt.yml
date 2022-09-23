@@ -94,6 +94,7 @@ jobs:
             git -C llvm-project apply ../llvm-prebuilt/patches/llvm-12-add-lld-install-targets.patch
           } else {
             git -C llvm-project apply ../llvm-prebuilt/patches/llvm-14-add-lld-install-targets.patch
+            git -C llvm-project apply ../llvm-prebuilt/patches/llvm-14-force-disable-clang-ast-introspection.patch
           }
 
       - name: Enable Windows host environment
