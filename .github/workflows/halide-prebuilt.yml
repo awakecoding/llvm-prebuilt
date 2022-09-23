@@ -92,9 +92,14 @@ jobs:
       - name: Configure Halide
         shell: pwsh
         run: |
-          $clang = if ($IsWindows) { "clang-cl" } else { "clang" }
+          if ($IsWindows) {
+            $Env:CC="clang-cl"
+            $Env:CXX="clang-cl"
+          } else {
+            $Env:CC="clang"
+            $Env:CXX="clang"
+          }
           cmake -G Ninja -S halide -B halide-build `
-            -DCMAKE_C_COMPILER=$clang -DCMAKE_CXX_COMPILER=$clang `
             -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON `
             -DWITH_TESTS=OFF -DWITH_APPS=OFF -DWITH_TUTORIALS=OFF `
             -DWITH_DOCS=OFF -DWITH_UTILS=OFF -DWITH_PYTHON_BINDINGS=OFF `
