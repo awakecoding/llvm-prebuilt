@@ -98,6 +98,7 @@ jobs:
         shell: pwsh
         run: |
           git -C rust apply ../llvm-prebuilt/patches/rust-${{matrix.version}}-allow-dynamic-linking-for-ios-targets.patch
+          git -C rust apply ../llvm-prebuilt/patches/rust-${{matrix.version}}-disable-filecheck-tool-sanity-checks.patch
 
       - name: Configure Rust
         shell: pwsh

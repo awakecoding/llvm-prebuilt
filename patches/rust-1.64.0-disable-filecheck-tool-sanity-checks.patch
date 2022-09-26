@@ -1,0 +1,94 @@
+From f2f5057f33fffc542ce5c10cdf53f8ca2a6b1719 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marc-Andr=C3=A9=20Moreau?= <mamoreau@devolutions.net>
+Date: Mon, 26 Sep 2022 11:09:12 -0400
+Subject: [PATCH] disable FileCheck tool usage in sanity checks
+
+---
+ src/bootstrap/config.rs              | 4 ++--
+ src/bootstrap/dist.rs                | 2 +-
+ src/bootstrap/sanity.rs              | 2 +-
+ src/bootstrap/test.rs                | 2 +-
+ src/tools/compiletest/src/runtest.rs | 4 ++--
+ 5 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/src/bootstrap/config.rs b/src/bootstrap/config.rs
+index 4325a237c69..b4c1b80fbb5 100644
+--- a/src/bootstrap/config.rs
++++ b/src/bootstrap/config.rs
+@@ -1182,10 +1182,10 @@ pub fn parse(args: &[String]) -> Config {
+                 .or_insert_with(|| Target::from_triple(&triple));
+ 
+             check_ci_llvm!(build_target.llvm_config);
+-            check_ci_llvm!(build_target.llvm_filecheck);
++            //check_ci_llvm!(build_target.llvm_filecheck);
+             let ci_llvm_bin = config.out.join(&*config.build.triple).join("ci-llvm/bin");
+             build_target.llvm_config = Some(ci_llvm_bin.join(exe("llvm-config", config.build)));
+-            build_target.llvm_filecheck = Some(ci_llvm_bin.join(exe("FileCheck", config.build)));
++            //build_target.llvm_filecheck = Some(ci_llvm_bin.join(exe("FileCheck", config.build)));
+         }
+ 
+         if let Some(t) = toml.dist {
+diff --git a/src/bootstrap/dist.rs b/src/bootstrap/dist.rs
+index 6291b204e48..32c70d62686 100644
+--- a/src/bootstrap/dist.rs
++++ b/src/bootstrap/dist.rs
+@@ -2067,7 +2067,7 @@ fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+             tarball.add_file(lld_path, "bin", 0o755);
+         }
+ 
+-        tarball.add_file(&builder.llvm_filecheck(target), "bin", 0o755);
++        //tarball.add_file(&builder.llvm_filecheck(target), "bin", 0o755);
+ 
+         // Copy the include directory as well; needed mostly to build
+         // librustc_llvm properly (e.g., llvm-config.h is in here). But also
+diff --git a/src/bootstrap/sanity.rs b/src/bootstrap/sanity.rs
+index cae41286f08..607f5d09e2b 100644
+--- a/src/bootstrap/sanity.rs
++++ b/src/bootstrap/sanity.rs
+@@ -173,7 +173,7 @@ pub fn check(build: &mut Build) {
+         // Externally configured LLVM requires FileCheck to exist
+         let filecheck = build.llvm_filecheck(build.build);
+         if !filecheck.starts_with(&build.out) && !filecheck.exists() && build.config.codegen_tests {
+-            panic!("FileCheck executable {:?} does not exist", filecheck);
++            eprintln!("FileCheck executable {:?} does not exist", filecheck);
+         }
+     }
+ 
+diff --git a/src/bootstrap/test.rs b/src/bootstrap/test.rs
+index c0fa8c9acbd..d579350dfb7 100644
+--- a/src/bootstrap/test.rs
++++ b/src/bootstrap/test.rs
+@@ -1401,7 +1401,7 @@ fn run(self, builder: &Builder<'_>) {
+         cmd.arg("--mode").arg(mode);
+         cmd.arg("--target").arg(target.rustc_target_arg());
+         cmd.arg("--host").arg(&*compiler.host.triple);
+-        cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.build));
++        //cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.build));
+ 
+         if builder.config.cmd.bless() {
+             cmd.arg("--bless");
+diff --git a/src/tools/compiletest/src/runtest.rs b/src/tools/compiletest/src/runtest.rs
+index d3e5a2dd644..63f0f20fa64 100644
+--- a/src/tools/compiletest/src/runtest.rs
++++ b/src/tools/compiletest/src/runtest.rs
+@@ -2308,7 +2308,7 @@ fn verify_with_filecheck(&self, output: &Path) -> ProcRes {
+ 
+     fn run_codegen_test(&self) {
+         if self.config.llvm_filecheck.is_none() {
+-            self.fatal("missing --llvm-filecheck");
++            //self.fatal("missing --llvm-filecheck");
+         }
+ 
+         let proc_res = self.compile_test_and_save_ir();
+@@ -2325,7 +2325,7 @@ fn run_codegen_test(&self) {
+ 
+     fn run_assembly_test(&self) {
+         if self.config.llvm_filecheck.is_none() {
+-            self.fatal("missing --llvm-filecheck");
++            //self.fatal("missing --llvm-filecheck");
+         }
+ 
+         let (proc_res, output_path) = self.compile_test_and_save_assembly();
+-- 
+2.25.1
+
