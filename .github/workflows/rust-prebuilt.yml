@@ -30,6 +30,7 @@ jobs:
           Install-Module VsDevShell -Force
           docker system prune -a -f # free some space on C:\
           New-Item -Path "C:\rust" -ItemType Directory | Out-Null
+          echo 'RUSTFLAGS="-C target-feature=+crt-static"' >> $Env:GITHUB_ENV
 
       - name: Configure macOS runner
         if: runner.os == 'macOS'
