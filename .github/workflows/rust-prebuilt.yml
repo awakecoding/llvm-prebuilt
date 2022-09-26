@@ -110,6 +110,7 @@ jobs:
           $RustHostPlatform = @{'windows'='pc-windows-msvc';
             'macos'='apple-darwin';'linux'='unknown-linux-gnu';}['${{runner.os}}']
           $RustHostTarget = "$RustHostArch-$RustHostPlatform"
+          $CrtStatic = if ($IsWindows) { "true" } else { "false" }
           $config = @(
             "changelog-seen=2",
             "[llvm]",
@@ -127,6 +128,7 @@ jobs:
             "dist-src=false",
             "[target.${RustHostTarget}]",
             "llvm-config=`"${RustLlvmConfig}`"",
+            "crt-static=`"${CrtStatic}`"",
             "[dist]",
             "src-tarball=false",
             "compression-formats=[`"xz`"]"
