@@ -128,7 +128,7 @@ jobs:
             "dist-src=false",
             "[target.${RustHostTarget}]",
             "llvm-config=`"${RustLlvmConfig}`"",
-            "crt-static=`"${CrtStatic}`"",
+            "crt-static=${CrtStatic}",
             "[dist]",
             "src-tarball=false",
             "compression-formats=[`"xz`"]"
