@@ -43,22 +43,23 @@ jobs:
         shell: pwsh
         run: |
           $CLANG_LLVM_OS='${{matrix.os}}'.ToLower()
+          $CLANG_LLVM_VERSION= if ('${{matrix.version}}' -eq '12.0.1') { '12.0.1' } else { '14.0.6' }
           $CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2022.2.0"
-          $CLANG_LLVM_NAME="clang+llvm-14.0.6-x86_64-${CLANG_LLVM_OS}"
+          $CLANG_LLVM_NAME="clang+llvm-${CLANG_LLVM_VERSION}-x86_64-${CLANG_LLVM_OS}"
           wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
           if ($IsWindows) {
+            $LLVM_PREFIX="C:/llvm"
             cmd.exe /c "7z.exe x ${CLANG_LLVM_NAME}.tar.xz -so | 7z x -si -ttar -o`"C:/temp`""
-            mv "C:/temp/${CLANG_LLVM_NAME}" "C:/llvm"
-            $LLVM_DIR = "C:/llvm/lib/cmake/llvm"
-            $LLVM_PATH = "C:/llvm/bin"
+            mv "C:/temp/${CLANG_LLVM_NAME}" $LLVM_PREFIX
           } else {
+            $LLVM_PREFIX="/opt/llvm"
             tar -xf "${CLANG_LLVM_NAME}.tar.xz" -C /tmp
-            sudo mv "/tmp/${CLANG_LLVM_NAME}" /opt/llvm
-            $LLVM_DIR = "/opt/llvm/lib/cmake/llvm"
-            $LLVM_PATH = "/opt/llvm/bin"
+            sudo mv "/tmp/${CLANG_LLVM_NAME}" $LLVM_PREFIX
           }
+          $LLVM_BIN_PATH="$LLVM_PREFIX/bin"
+          $LLVM_DIR="$LLVM_PREFIX/lib/cmake/llvm"
           echo "LLVM_DIR=$LLVM_DIR" >> $Env:GITHUB_ENV
-          echo "PATH=$Env:PATH$([IO.Path]::PathSeparator)$LLVM_PATH" >> $Env:GITHUB_ENV
+          echo "PATH=$Env:PATH$([IO.Path]::PathSeparator)$LLVM_BIN_PATH" >> $Env:GITHUB_ENV
 
       - name: Clone Halide ${{matrix.version}}
         uses: actions/checkout@v3
