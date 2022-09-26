@@ -59,7 +59,7 @@ jobs:
           $LLVM_BIN_PATH="$LLVM_PREFIX/bin"
           $LLVM_DIR="$LLVM_PREFIX/lib/cmake/llvm"
           echo "LLVM_DIR=$LLVM_DIR" >> $Env:GITHUB_ENV
-          echo "PATH=$Env:PATH$([IO.Path]::PathSeparator)$LLVM_BIN_PATH" >> $Env:GITHUB_ENV
+          echo "PATH=$LLVM_BIN_PATH$([IO.Path]::PathSeparator)$Env:PATH" >> $Env:GITHUB_ENV
 
       - name: Clone Halide ${{matrix.version}}
         uses: actions/checkout@v3
