@@ -136,14 +136,7 @@ jobs:
           )
           Set-Content -Path .\config.toml -Value $config
 
-      - name: Build Rust
-        shell: pwsh
-        working-directory: rust
-        run: |
-          Remove-Item Env:GITHUB_ACTIONS
-          python x.py build
-
-      - name: Package Rust
+      - name: Build and package Rust
         shell: pwsh
         working-directory: rust
         run: |
