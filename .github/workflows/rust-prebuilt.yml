@@ -30,11 +30,6 @@ jobs:
           Install-Module VsDevShell -Force
           docker system prune -a -f # free some space on C:\
           New-Item -Path "C:\rust" -ItemType Directory | Out-Null
-          $CargoConfigFile = "~/.cargo/config"
-          echo "[target.x86_64-pc-windows-msvc]" >> $CargoConfigFile
-          echo "rustflags=[`"-C`",`"target-feature=+crt-static`"]" >> $CargoConfigFile
-          echo "[target.aarch64-pc-windows-msvc]" >> $CargoConfigFile
-          echo "rustflags=[`"-C`",`"target-feature=+crt-static`"]" >> $CargoConfigFile
 
       - name: Configure macOS runner
         if: runner.os == 'macOS'
@@ -115,7 +110,6 @@ jobs:
           $RustHostPlatform = @{'windows'='pc-windows-msvc';
             'macos'='apple-darwin';'linux'='unknown-linux-gnu';}['${{runner.os}}']
           $RustHostTarget = "$RustHostArch-$RustHostPlatform"
-          $CrtStatic = if ($IsWindows) { "true" } else { "false" }
           $config = @(
             "changelog-seen=2",
             "[llvm]",
@@ -133,7 +127,7 @@ jobs:
             "dist-src=false",
             "[target.${RustHostTarget}]",
             "llvm-config=`"${RustLlvmConfig}`"",
-            "crt-static=${CrtStatic}",
+            "crt-static=false",
             "[dist]",
             "src-tarball=false",
             "compression-formats=[`"xz`"]"
