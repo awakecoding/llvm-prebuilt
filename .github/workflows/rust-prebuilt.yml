@@ -115,7 +115,7 @@ jobs:
             "[llvm]",
             "download-ci-llvm=false",
             "ninja=true",
-            "link-shared=true",
+            "link-shared=false",
             "static-libstdcpp=false",
             "targets=`"X86;ARM;AArch64;WebAssembly`""
             "[build]",
