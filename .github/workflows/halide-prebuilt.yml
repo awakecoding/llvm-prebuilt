@@ -40,41 +40,26 @@ jobs:
           sudo apt install git xz-utils ninja-build
 
       - name: Install clang+llvm
-        if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $CLANG_LLVM_OS="windows"
-          $CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.4"
-          $CLANG_LLVM_NAME="clang+llvm-12.0.1-x86_64-${CLANG_LLVM_OS}"
+          $CLANG_LLVM_OS='${{matrix.os}}'.ToLower()
+          $CLANG_LLVM_VERSION= if ('${{matrix.version}}' -eq '12.0.1') { '12.0.1' } else { '14.0.6' }
+          $CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2022.2.0"
+          $CLANG_LLVM_NAME="clang+llvm-${CLANG_LLVM_VERSION}-x86_64-${CLANG_LLVM_OS}"
           wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
-          cmd.exe /c "7z.exe x ${CLANG_LLVM_NAME}.tar.xz -so | 7z x -si -ttar -o`"C:/temp`""
-          mv "C:/temp/${CLANG_LLVM_NAME}" "C:/llvm"
-          echo "LLVM_DIR=C:/llvm/lib/cmake/llvm" >> $Env:GITHUB_ENV
-          echo "PATH=$Env:PATH;C:/llvm/bin" >> $Env:GITHUB_ENV
-
-      - name: Install clang+llvm
-        if: runner.os == 'macOS'
-        run: |
-          CLANG_LLVM_OS="macos"
-          CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.4"
-          CLANG_LLVM_NAME="clang+llvm-12.0.1-x86_64-${CLANG_LLVM_OS}"
-          wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
-          tar -xf "${CLANG_LLVM_NAME}.tar.xz" -C /tmp
-          sudo mv "/tmp/${CLANG_LLVM_NAME}" /opt/llvm
-          echo "LLVM_DIR=/opt/llvm/lib/cmake/llvm" >> $GITHUB_ENV
-          echo "PATH=$PATH:/opt/llvm/bin" >> $GITHUB_ENV
-
-      - name: Install clang+llvm
-        if: runner.os == 'Linux'
-        run: |
-          CLANG_LLVM_OS="ubuntu-20.04"
-          CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.4"
-          CLANG_LLVM_NAME="clang+llvm-12.0.1-x86_64-${CLANG_LLVM_OS}"
-          wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
-          tar -xf "${CLANG_LLVM_NAME}.tar.xz" -C /tmp
-          sudo mv "/tmp/${CLANG_LLVM_NAME}" /opt/llvm
-          echo "LLVM_DIR=/opt/llvm/lib/cmake/llvm" >> $GITHUB_ENV
-          echo "PATH=$PATH:/opt/llvm/bin" >> $GITHUB_ENV
+          if ($IsWindows) {
+            $LLVM_PREFIX="C:/llvm"
+            cmd.exe /c "7z.exe x ${CLANG_LLVM_NAME}.tar.xz -so | 7z x -si -ttar -o`"C:/temp`""
+            mv "C:/temp/${CLANG_LLVM_NAME}" $LLVM_PREFIX
+          } else {
+            $LLVM_PREFIX="/opt/llvm"
+            tar -xf "${CLANG_LLVM_NAME}.tar.xz" -C /tmp
+            sudo mv "/tmp/${CLANG_LLVM_NAME}" $LLVM_PREFIX
+          }
+          $LLVM_BIN_PATH="$LLVM_PREFIX/bin"
+          $LLVM_DIR="$LLVM_PREFIX/lib/cmake/llvm"
+          echo "LLVM_DIR=$LLVM_DIR" >> $Env:GITHUB_ENV
+          echo "PATH=$LLVM_BIN_PATH$([IO.Path]::PathSeparator)$Env:PATH" >> $Env:GITHUB_ENV
 
       - name: Clone Halide ${{matrix.version}}
         uses: actions/checkout@v3

@@ -140,6 +140,13 @@ else()
         lldWasm)
 endif()
 
+set(LLVM_BUILD_UTILS ON CACHE BOOL "")
+set(LLVM_INSTALL_UTILS ON CACHE BOOL "")
+set(LLVM_TOOLCHAIN_UTILITIES
+    FileCheck
+    yaml2obj
+    CACHE STRING "")
+
 set(LLVM_DEVELOPMENT_COMPONENTS
     cmake-exports
     llvm-headers
@@ -163,4 +170,5 @@ set(LLVM_DISTRIBUTION_COMPONENTS
     clang-tidy
     ${LLVM_DEVELOPMENT_COMPONENTS}
     ${LLVM_TOOLCHAIN_TOOLS}
+    ${LLVM_TOOLCHAIN_UTILITIES}
     CACHE STRING "")

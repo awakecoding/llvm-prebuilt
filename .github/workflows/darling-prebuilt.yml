@@ -27,16 +27,23 @@ jobs:
           sudo apt install python2 2&>/dev/null || true
 
       - name: Install clang+llvm
+        shell: pwsh
         run: |
-          CLANG_LLVM_OS="ubuntu-20.04"
-          CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2021.2.4"
-          CLANG_LLVM_NAME="clang+llvm-12.0.1-x86_64-${CLANG_LLVM_OS}"
+          $CLANG_LLVM_OS='${{matrix.os}}'.ToLower()
+          $CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2022.2.0"
+          $CLANG_LLVM_NAME="clang+llvm-12.0.1-x86_64-${CLANG_LLVM_OS}"
           wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
+          $LLVM_PREFIX="/opt/llvm"
           tar -xf "${CLANG_LLVM_NAME}.tar.xz" -C /tmp
-          sudo mv "/tmp/${CLANG_LLVM_NAME}" /opt/llvm
-          echo "PATH=$PATH:/opt/llvm/bin" >> $GITHUB_ENV
-          echo "CC=clang" >> $GITHUB_ENV
-          echo "CXX=clang++" >> $GITHUB_ENV
+          sudo mv "/tmp/${CLANG_LLVM_NAME}" $LLVM_PREFIX
+          $LLVM_CONFIG="$LLVM_PREFIX/bin/llvm-config"
+          $LLVM_BIN_PATH="$LLVM_PREFIX/bin"
+          $LLVM_DIR="$LLVM_PREFIX/lib/cmake/llvm"
+          echo "LLVM_DIR=$LLVM_DIR" >> $Env:GITHUB_ENV
+          echo "LLVM_CONFIG=$LLVM_CONFIG" >> $Env:GITHUB_ENV
+          echo "PATH=$LLVM_BIN_PATH$([IO.Path]::PathSeparator)$Env:PATH" >> $Env:GITHUB_ENV
+          echo "CC=clang" >> $Env:GITHUB_ENV
+          echo "CXX=clang++" >> $Env:GITHUB_ENV
 
       - name: Clone Darling
         uses: actions/checkout@v3

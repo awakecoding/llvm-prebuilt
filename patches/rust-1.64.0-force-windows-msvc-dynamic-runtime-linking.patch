@@ -1,0 +1,74 @@
+From 07f891e6d5a2524c95bfdf73969df532bf1742fb Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marc-Andr=C3=A9=20Moreau?= <mamoreau@devolutions.net>
+Date: Tue, 27 Sep 2022 21:11:58 -0400
+Subject: [PATCH] force Windows MSVC dynamic runtime linking
+
+---
+ src/bootstrap/bin/rustc.rs | 2 +-
+ src/bootstrap/bootstrap.py | 2 +-
+ src/bootstrap/builder.rs   | 2 +-
+ src/bootstrap/cc_detect.rs | 6 +++---
+ 4 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/src/bootstrap/bin/rustc.rs b/src/bootstrap/bin/rustc.rs
+index 40a3cc6d12c..5e45fee3a43 100644
+--- a/src/bootstrap/bin/rustc.rs
++++ b/src/bootstrap/bin/rustc.rs
+@@ -120,7 +120,7 @@ fn main() {
+ 
+         if let Ok(s) = env::var("RUSTC_HOST_CRT_STATIC") {
+             if s == "true" {
+-                cmd.arg("-C").arg("target-feature=+crt-static");
++                cmd.arg("-C").arg("target-feature=-crt-static");
+             }
+             if s == "false" {
+                 cmd.arg("-C").arg("target-feature=-crt-static");
+diff --git a/src/bootstrap/bootstrap.py b/src/bootstrap/bootstrap.py
+index 03eec02a8bf..03e53de6a67 100644
+--- a/src/bootstrap/bootstrap.py
++++ b/src/bootstrap/bootstrap.py
+@@ -737,7 +737,7 @@ class RustBuild(object):
+         build_section = "target.{}".format(self.build)
+         target_features = []
+         if self.get_toml("crt-static", build_section) == "true":
+-            target_features += ["+crt-static"]
++            target_features += ["-crt-static"]
+         elif self.get_toml("crt-static", build_section) == "false":
+             target_features += ["-crt-static"]
+         if target_features:
+diff --git a/src/bootstrap/builder.rs b/src/bootstrap/builder.rs
+index 0ab4824ac0a..ca52f4f7733 100644
+--- a/src/bootstrap/builder.rs
++++ b/src/bootstrap/builder.rs
+@@ -1788,7 +1788,7 @@ pub fn cargo(
+ 
+         if let Some(x) = self.crt_static(target) {
+             if x {
+-                rustflags.arg("-Ctarget-feature=+crt-static");
++                rustflags.arg("-Ctarget-feature=-crt-static");
+             } else {
+                 rustflags.arg("-Ctarget-feature=-crt-static");
+             }
+diff --git a/src/bootstrap/cc_detect.rs b/src/bootstrap/cc_detect.rs
+index 759a99c330c..fe2b1c53024 100644
+--- a/src/bootstrap/cc_detect.rs
++++ b/src/bootstrap/cc_detect.rs
+@@ -70,12 +70,12 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
+         .target(&target.triple)
+         .host(&build.build.triple);
+     match build.crt_static(target) {
+-        Some(a) => {
+-            cfg.static_crt(a);
++        Some(_a) => {
++            cfg.static_crt(false);
+         }
+         None => {
+             if target.contains("msvc") {
+-                cfg.static_crt(true);
++                cfg.static_crt(false);
+             }
+             if target.contains("musl") {
+                 cfg.static_flag(true);
+-- 
+2.25.1
+

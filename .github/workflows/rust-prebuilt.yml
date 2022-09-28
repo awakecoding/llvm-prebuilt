@@ -26,7 +26,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          choco install ninja 7zip
+          choco install ninja 7zip wget
           Install-Module VsDevShell -Force
           docker system prune -a -f # free some space on C:\
           New-Item -Path "C:\rust" -ItemType Directory | Out-Null
@@ -42,6 +42,31 @@ jobs:
         run: |
           sudo apt update
           sudo apt install ninja-build xz-utils
+
+      - name: Install clang+llvm
+        shell: pwsh
+        run: |
+          $CLANG_LLVM_OS='${{matrix.os}}'.ToLower()
+          $CLANG_LLVM_VERSION= if ('${{matrix.version}}' -eq '12.0.1') { '12.0.1' } else { '14.0.6' }
+          $CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2022.2.0"
+          $CLANG_LLVM_NAME="clang+llvm-${CLANG_LLVM_VERSION}-x86_64-${CLANG_LLVM_OS}"
+          wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
+          if ($IsWindows) {
+            $LLVM_PREFIX="C:/llvm"
+            cmd.exe /c "7z.exe x ${CLANG_LLVM_NAME}.tar.xz -so | 7z x -si -ttar -o`"C:/temp`""
+            mv "C:/temp/${CLANG_LLVM_NAME}" $LLVM_PREFIX
+            $LLVM_CONFIG="$LLVM_PREFIX/bin/llvm-config.exe"
+          } else {
+            $LLVM_PREFIX="/opt/llvm"
+            tar -xf "${CLANG_LLVM_NAME}.tar.xz" -C /tmp
+            sudo mv "/tmp/${CLANG_LLVM_NAME}" $LLVM_PREFIX
+            $LLVM_CONFIG="$LLVM_PREFIX/bin/llvm-config"
+          }
+          $LLVM_BIN_PATH="$LLVM_PREFIX/bin"
+          $LLVM_DIR="$LLVM_PREFIX/lib/cmake/llvm"
+          echo "LLVM_DIR=$LLVM_DIR" >> $Env:GITHUB_ENV
+          echo "LLVM_CONFIG=$LLVM_CONFIG" >> $Env:GITHUB_ENV
+          echo "PATH=$LLVM_BIN_PATH$([IO.Path]::PathSeparator)$Env:PATH" >> $Env:GITHUB_ENV
 
       - name: Setup dynamic variables
         id: dynamic-variables
@@ -73,39 +98,48 @@ jobs:
         shell: pwsh
         run: |
           git -C rust apply ../llvm-prebuilt/patches/rust-${{matrix.version}}-allow-dynamic-linking-for-ios-targets.patch
+          git -C rust apply ../llvm-prebuilt/patches/rust-${{matrix.version}}-disable-filecheck-tool-sanity-checks.patch
+          if ($IsWindows) {
+            git -C rust apply ../llvm-prebuilt/patches/rust-${{matrix.version}}-force-windows-msvc-dynamic-runtime-linking.patch
+          }
 
       - name: Configure Rust
         shell: pwsh
         working-directory: rust
         run: |
           $RustBuildDir = "${{steps.dynamic-variables.outputs.rust-build-dir}}".Replace('\','\\')
+          $RustLlvmConfig = $Env:LLVM_CONFIG.Replace('\','\\')
+          $RustHostArch = '${{matrix.arch}}'
+          $RustHostPlatform = @{'windows'='pc-windows-msvc';
+            'macos'='apple-darwin';'linux'='unknown-linux-gnu';}['${{runner.os}}']
+          $RustHostTarget = "$RustHostArch-$RustHostPlatform"
           $config = @(
             "changelog-seen=2",
             "[llvm]",
             "download-ci-llvm=false",
             "ninja=true",
+            "link-shared=false",
+            "static-libstdcpp=false",
             "targets=`"X86;ARM;AArch64;WebAssembly`""
             "[build]",
             "docs=false",
+            "host=[`"$RustHostTarget`"]",
+            "target=[`"$RustHostTarget`"]",
             "build-dir=`"$RustBuildDir`"",
             "[install]",
             "[rust]",
             "channel=`"stable`"",
             "dist-src=false",
+            "[target.${RustHostTarget}]",
+            "llvm-config=`"${RustLlvmConfig}`"",
+            "crt-static=false",
             "[dist]",
             "src-tarball=false",
             "compression-formats=[`"xz`"]"
           )
           Set-Content -Path .\config.toml -Value $config
 
-      - name: Build Rust
-        shell: pwsh
-        working-directory: rust
-        run: |
-          Remove-Item Env:GITHUB_ACTIONS
-          python x.py build
-
-      - name: Package Rust
+      - name: Build and package Rust
         shell: pwsh
         working-directory: rust
         run: |
