@@ -26,7 +26,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          choco install ninja 7zip wget
+          choco install --no-progress ninja 7zip wget
           Install-Module VsDevShell -Force
           docker system prune -a -f # free some space on C:\
           New-Item -Path "C:\rust" -ItemType Directory | Out-Null
@@ -42,6 +42,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install ninja-build xz-utils
+          sudo apt install g++-aarch64-linux-gnu
 
       - name: Install clang+llvm
         shell: pwsh
