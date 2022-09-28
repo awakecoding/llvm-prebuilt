@@ -99,6 +99,9 @@ jobs:
         run: |
           git -C rust apply ../llvm-prebuilt/patches/rust-${{matrix.version}}-allow-dynamic-linking-for-ios-targets.patch
           git -C rust apply ../llvm-prebuilt/patches/rust-${{matrix.version}}-disable-filecheck-tool-sanity-checks.patch
+          if ($IsWindows) {
+            git -C rust apply ../llvm-prebuilt/patches/rust-${{matrix.version}}-force-windows-msvc-dynamic-runtime-linking
+          }
 
       - name: Configure Rust
         shell: pwsh
