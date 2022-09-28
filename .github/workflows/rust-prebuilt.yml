@@ -26,7 +26,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          choco install ninja 7zip wget
+          choco install --no-progress ninja 7zip wget
           Install-Module VsDevShell -Force
           docker system prune -a -f # free some space on C:\
           New-Item -Path "C:\rust" -ItemType Directory | Out-Null
@@ -42,14 +42,54 @@ jobs:
         run: |
           sudo apt update
           sudo apt install ninja-build xz-utils
+          sudo apt install g++-aarch64-linux-gnu
+
+      - name: Configure Android NDK
+        if: runner.os == 'linux'
+        shell: pwsh
+        run: |
+          $CargoConfigFile = "~/.cargo/config"
+          $AndroidToolchain="${Env:ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64"
+
+          Get-ChildItem -Path $AndroidToolchain "libunwind.a" -Recurse | ForEach-Object {
+            $libunwind = $_.FullName
+            $libgcc = Join-Path $_.DirectoryName "libgcc.a"
+            if (-Not (Test-Path $libgcc)) {
+                Write-Host $libgcc
+                Copy-Item $libunwind $libgcc
+            }
+          }
+
+          echo "[target.i686-linux-android]" >> $CargoConfigFile
+          echo "linker=`"$AndroidToolchain/bin/i686-linux-android21-clang`"" >> $CargoConfigFile
+          echo "CC_i686-linux-android=$AndroidToolchain/bin/i686-linux-android21-clang" >> $Env:GITHUB_ENV
+          echo "AR_i686-linux-android=$AndroidToolchain/bin/llvm-ar" >> $Env:GITHUB_ENV
+          Copy-Item "$AndroidToolchain/bin/llvm-ar" "$AndroidToolchain/bin/i686-linux-android21-ar"
+
+          echo "[target.x86_64-linux-android]" >> $CargoConfigFile
+          echo "linker=`"$AndroidToolchain/bin/x86_64-linux-android21-clang`"" >> $CargoConfigFile
+          echo "CC_x86_64-linux-android=$AndroidToolchain/bin/x86_64-linux-android21-clang" >> $Env:GITHUB_ENV
+          echo "AR_x86_64-linux-android=$AndroidToolchain/bin/llvm-ar" >> $Env:GITHUB_ENV
+          Copy-Item "$AndroidToolchain/bin/llvm-ar" "$AndroidToolchain/bin/x86_64-linux-android21-ar"
+          
+          echo "[target.armv7-linux-androideabi]" >> $CargoConfigFile
+          echo "linker=`"$AndroidToolchain/bin/armv7a-linux-androideabi21-clang`"" >> $CargoConfigFile
+          echo "CC_armv7-linux-androideabi=$AndroidToolchain/bin/armv7a-linux-androideabi21-clang" >> $Env:GITHUB_ENV
+          echo "AR_armv7-linux-androideabi=$AndroidToolchain/bin/llvm-ar" >> $Env:GITHUB_ENV
+          Copy-Item "$AndroidToolchain/bin/llvm-ar" "$AndroidToolchain/bin/armv7a-linux-androideabi21-ar"
+          
+          echo "[target.aarch64-linux-android]" >> $CargoConfigFile
+          echo "linker=`"$AndroidToolchain/bin/aarch64-linux-android21-clang`"" >> $CargoConfigFile
+          echo "CC_aarch64-linux-android=$AndroidToolchain/bin/aarch64-linux-android21-clang" >> $Env:GITHUB_ENV
+          echo "AR_aarch64-linux-android=$AndroidToolchain/bin/llvm-ar" >> $Env:GITHUB_ENV
+          Copy-Item "$AndroidToolchain/bin/llvm-ar" "$AndroidToolchain/bin/aarch64-linux-android21-ar"
 
       - name: Install clang+llvm
         shell: pwsh
         run: |
           $CLANG_LLVM_OS='${{matrix.os}}'.ToLower()
-          $CLANG_LLVM_VERSION= if ('${{matrix.version}}' -eq '12.0.1') { '12.0.1' } else { '14.0.6' }
           $CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2022.2.0"
-          $CLANG_LLVM_NAME="clang+llvm-${CLANG_LLVM_VERSION}-x86_64-${CLANG_LLVM_OS}"
+          $CLANG_LLVM_NAME="clang+llvm-14.0.6-x86_64-${CLANG_LLVM_OS}"
           wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
           if ($IsWindows) {
             $LLVM_PREFIX="C:/llvm"
@@ -113,6 +153,14 @@ jobs:
           $RustHostPlatform = @{'windows'='pc-windows-msvc';
             'macos'='apple-darwin';'linux'='unknown-linux-gnu';}['${{runner.os}}']
           $RustHostTarget = "$RustHostArch-$RustHostPlatform"
+          $RustTargets = @{
+            'windows' = @('x86_64-pc-windows-msvc', 'aarch64-pc-windows-msvc');
+            'macos' = @('x86_64-apple-darwin', 'aarch64-apple-darwin',
+              'x86_64-apple-ios', 'aarch64-apple-ios');
+            'linux' = @('x86_64-unknown-linux-gnu', 'aarch64-unknown-linux-gnu',
+              'i686-linux-android', 'armv7-linux-androideabi',
+              'x86_64-linux-android', 'aarch64-linux-android');
+          }['${{runner.os}}']
           $config = @(
             "changelog-seen=2",
             "[llvm]",
@@ -124,7 +172,7 @@ jobs:
             "[build]",
             "docs=false",
             "host=[`"$RustHostTarget`"]",
-            "target=[`"$RustHostTarget`"]",
+            "target=[$($RustTargets | Join-String -DoubleQuote -Separator ',')]",
             "build-dir=`"$RustBuildDir`"",
             "[install]",
             "[rust]",
