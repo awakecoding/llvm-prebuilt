@@ -44,6 +44,42 @@ jobs:
           sudo apt install ninja-build xz-utils
           sudo apt install g++-aarch64-linux-gnu
 
+      - name: Configure Android NDK
+        if: runner.os == 'linux'
+        shell: pwsh
+        run: |
+          $CargoConfigFile = "~/.cargo/config"
+          $AndroidToolchain="${Env:ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64"
+
+          Get-ChildItem -Path $AndroidToolchain "libunwind.a" -Recurse | ForEach-Object {
+            $libunwind = $_.FullName
+            $libgcc = Join-Path $_.DirectoryName "libgcc.a"
+            if (-Not (Test-Path $libgcc)) {
+                Write-Host $libgcc
+                Copy-Item $libunwind $libgcc
+            }
+          }
+
+          echo "[target.i686-linux-android]" >> $CargoConfigFile
+          echo "linker=`"$AndroidToolchain/bin/i686-linux-android19-clang`"" >> $CargoConfigFile
+          echo "CC_i686-linux-android=$AndroidToolchain/bin/i686-linux-android19-clang" >> $Env:GITHUB_ENV
+          echo "AR_i686-linux-android=$AndroidToolchain/bin/llvm-ar" >> $Env:GITHUB_ENV
+
+          echo "[target.x86_64-linux-android]" >> $CargoConfigFile
+          echo "linker=`"$AndroidToolchain/bin/x86_64-linux-android21-clang`"" >> $CargoConfigFile
+          echo "CC_x86_64-linux-android=$AndroidToolchain/bin/x86_64-linux-android21-clang" >> $Env:GITHUB_ENV
+          echo "AR_x86_64-linux-android=$AndroidToolchain/bin/llvm-ar" >> $Env:GITHUB_ENV
+          
+          echo "[target.armv7-linux-androideabi]" >> $CargoConfigFile
+          echo "linker=`"$AndroidToolchain/bin/armv7a-linux-androideabi21-clang`"" >> $CargoConfigFile
+          echo "CC_armv7-linux-androideabi=$AndroidToolchain/bin/armv7a-linux-androideabi21-clang" >> $Env:GITHUB_ENV
+          echo "AR_armv7-linux-androideabi=$AndroidToolchain/bin/llvm-ar" >> $Env:GITHUB_ENV
+          
+          echo "[target.aarch64-linux-android]" >> $CargoConfigFile
+          echo "linker=`"$AndroidToolchain/bin/aarch64-linux-android21-clang`"" >> $CargoConfigFile
+          echo "CC_aarch64-linux-android=$AndroidToolchain/bin/aarch64-linux-android21-clang" >> $Env:GITHUB_ENV
+          echo "AR_aarch64-linux-android=$AndroidToolchain/bin/llvm-ar" >> $Env:GITHUB_ENV
+
       - name: Install clang+llvm
         shell: pwsh
         run: |
