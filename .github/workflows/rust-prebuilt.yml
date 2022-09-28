@@ -131,7 +131,7 @@ jobs:
             "[build]",
             "docs=false",
             "host=[`"$RustHostTarget`"]",
-            "target=[`"$($RustTargets | Join-String -DoubleQuote -Separator ',')`"]",
+            "target=[$($RustTargets | Join-String -DoubleQuote -Separator ',')]",
             "build-dir=`"$RustBuildDir`"",
             "[install]",
             "[rust]",
