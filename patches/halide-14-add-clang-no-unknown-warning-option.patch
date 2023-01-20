@@ -1,0 +1,24 @@
+From 165416c82f9317968d4811464cca0c1d5fc56775 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marc-Andr=C3=A9=20Moreau?= <mamoreau@devolutions.net>
+Date: Sun, 22 Jan 2023 14:58:02 -0500
+Subject: [PATCH] add clang no unknown warning option
+
+---
+ src/CMakeLists.txt | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 8202c49d5..d345f70fd 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -466,6 +466,7 @@ target_compile_options(
+         $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-undefined-func-template>
+         $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-unused-member-function>
+         $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-unused-template>
++        $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-unknown-warning-option>
+ 
+         $<$<CXX_COMPILER_ID:MSVC>:/W3>
+         $<$<CXX_COMPILER_ID:MSVC>:/wd4018>  # 4018: disable "signed/unsigned mismatch"
+-- 
+2.25.1
+

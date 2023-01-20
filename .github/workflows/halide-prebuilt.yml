@@ -1,5 +1,11 @@
 name: halide prebuilt
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      llvm_run_id:
+        description: 'llvm workflow run id'
+        default: "latest"
+        required: true
 jobs:
   build:
     name: halide [${{matrix.arch}}-${{matrix.os}}-${{matrix.version}}]
@@ -7,25 +13,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [ x86_64 ]
+        arch: [ x86_64, aarch64 ]
         os: [ windows, macos, ubuntu-20.04, ubuntu-22.04 ]
-        version: [ 12.0.1, 14.0.0 ]
+        version: [ 14.0.0 ]
 
         include:
           - os: windows
             runner: windows-2022
           - os: macos
-            runner: macos-latest
+            runner: macos-12
           - os: ubuntu-20.04
             runner: ubuntu-20.04
           - os: ubuntu-22.04
             runner: ubuntu-22.04
+
+          - arch: x86_64
+            os: windows
+            msvc_arch: amd64
+          - arch: aarch64
+            os: windows
+            msvc_arch: amd64_arm64
   
     steps:
       - name: Configure Windows runner
         if: runner.os == 'Windows'
         run: |
           choco install ninja 7zip wget
+          Install-Module -Name VsDevShell -Force
 
       - name: Configure macOS runner
         if: runner.os == 'macOS'
@@ -35,15 +49,18 @@ jobs:
 
       - name: Configure Linux runner
         if: runner.os == 'Linux'
+        shell: pwsh
         run: |
           sudo apt update
-          sudo apt install git xz-utils ninja-build
+          sudo apt install zstd xz-utils
+          sudo apt install ninja-build
+          sudo apt install g++-aarch64-linux-gnu
 
-      - name: Install clang+llvm
+      - name: Install host clang+llvm
         shell: pwsh
         run: |
           $CLANG_LLVM_OS='${{matrix.os}}'.ToLower()
-          $CLANG_LLVM_VERSION= if ('${{matrix.version}}' -eq '12.0.1') { '12.0.1' } else { '14.0.6' }
+          $CLANG_LLVM_VERSION='14.0.6'
           $CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2022.2.0"
           $CLANG_LLVM_NAME="clang+llvm-${CLANG_LLVM_VERSION}-x86_64-${CLANG_LLVM_OS}"
           wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
@@ -58,8 +75,53 @@ jobs:
           }
           $LLVM_BIN_PATH="$LLVM_PREFIX/bin"
           $LLVM_DIR="$LLVM_PREFIX/lib/cmake/llvm"
+          $CLANG_DIR="$LLVM_PREFIX/lib/cmake/clang"
+          echo "LLVM_X86_64_DIR=$LLVM_DIR" >> $Env:GITHUB_ENV
+          echo "CLANG_X86_64_DIR=$CLANG_DIR" >> $Env:GITHUB_ENV
+
           echo "LLVM_DIR=$LLVM_DIR" >> $Env:GITHUB_ENV
+          echo "CLANG_DIR=$CLANG_DIR" >> $Env:GITHUB_ENV
           echo "PATH=$LLVM_BIN_PATH$([IO.Path]::PathSeparator)$Env:PATH" >> $Env:GITHUB_ENV
+
+      - name: Install target clang+llvm
+        if: matrix.arch == 'aarch64'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $LlvmPlatform='${{matrix.os}}'
+          $LlvmArch='${{matrix.arch}}'
+          $LlvmVersion='14.0.6'
+          $LlvmName="clang+llvm-${LlvmVersion}-${LlvmArch}-${LlvmPlatform}"
+          $RunId = '${{ github.event.inputs.run_id }}'
+          if ($RunId -eq 'latest') {
+            $RunId = $(gh run list -w 'LLVM prebuilt' --json 'status,databaseId,conclusion') |
+              ConvertFrom-Json | Where-Object { ($_.status -eq 'completed') -and ($_.conclusion -eq 'success') } |
+              Select-Object -First 1 -ExpandProperty databaseId
+          }
+          & gh run download $RunId --repo $Env:GITHUB_REPOSITORY -n $LlvmName
+          if ($IsWindows) {
+            $LLVM_PREFIX="C:/llvm-${LlvmArch}"
+            cmd.exe /c "7z.exe x ${LlvmName}.tar.xz -so | 7z x -si -ttar -o`"C:/temp`""
+            mv "C:/temp/${LlvmName}" $LLVM_PREFIX
+          } else {
+            $LLVM_PREFIX="/opt/llvm-${LlvmArch}"
+            tar -xf "${LlvmName}.tar.xz" -C /tmp
+            sudo mv "/tmp/${LlvmName}" $LLVM_PREFIX
+          }
+          $LLVM_BIN_PATH="$LLVM_PREFIX/bin"
+          $LLVM_DIR="$LLVM_PREFIX/lib/cmake/llvm"
+          $CLANG_DIR="$LLVM_PREFIX/lib/cmake/clang"
+          echo "LLVM_AARCH64_DIR=$LLVM_DIR" >> $Env:GITHUB_ENV
+          echo "CLANG_AARCH64_DIR=$LLVM_DIR" >> $Env:GITHUB_ENV
+
+          echo "LLVM_DIR=$LLVM_DIR" >> $Env:GITHUB_ENV
+          #echo "CLANG_DIR=$CLANG_DIR" >> $Env:GITHUB_ENV
+
+      - name: Clone project
+        uses: actions/checkout@v3
+        with:
+          path: llvm-prebuilt
 
       - name: Clone Halide ${{matrix.version}}
         uses: actions/checkout@v3
@@ -68,25 +130,68 @@ jobs:
           ref: v${{matrix.version}}
           path: halide
 
-      - name: Enable Windows environment
+      - name: Patch Halide
+        shell: pwsh
+        run: |
+          git -C halide apply ../llvm-prebuilt/patches/halide-14-add-halide-host-tools-dir-cmake-option.patch
+          git -C halide apply ../llvm-prebuilt/patches/halide-14-disable-autoschedulers.patch
+          git -C halide apply ../llvm-prebuilt/patches/halide-14-disable-imported-clang-llvm-executables.patch
+          git -C halide apply ../llvm-prebuilt/patches/halide-14-add-clang-no-unknown-warning-option.patch
+
+      - name: Build Halide host tools
+        shell: pwsh
+        run: |
+          if ($IsWindows) {
+            Enter-VsDevShell x64
+          }
+
+          cmake -G Ninja -S halide -B halide-host `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DLLVM_DIR="$Env:LLVM_DIR" `
+            -Wno-dev
+
+          cmake --build halide-host --target build_halide_h binary2cpp regexp_replace
+
+          $HALIDE_HOST_TOOLS_DIR = "$Env:GITHUB_WORKSPACE/halide-host/tools"
+          if ($IsWindows) {
+            $HALIDE_HOST_TOOLS_DIR = "$Env:GITHUB_WORKSPACE/halide-host/bin"
+          }
+          echo "HALIDE_HOST_TOOLS_DIR=$HALIDE_HOST_TOOLS_DIR" >> $Env:GITHUB_ENV
+
+      - name: Enable Windows target environment
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
         with:
-          arch: amd64
+          arch: ${{matrix.msvc_arch}}
 
       - name: Configure Halide
         shell: pwsh
         run: |
           if ($IsWindows) {
-            $Env:CC="clang-cl"
-            $Env:CXX="clang-cl"
+            $TargetArch = @{'x86_64'='x86_64';'aarch64'='arm64'}['${{matrix.arch}}']
+            $Env:CC="clang-cl --target=${TargetArch}-pc-windows-msvc"
+            $Env:CXX="clang-cl --target=${TargetArch}-pc-windows-msvc"
           }
-          cmake -G Ninja -S halide -B halide-build `
-            -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON `
-            -DWITH_TESTS=OFF -DWITH_APPS=OFF -DWITH_TUTORIALS=OFF `
-            -DWITH_DOCS=OFF -DWITH_UTILS=OFF -DWITH_PYTHON_BINDINGS=OFF `
-            -DTARGET_WEBASSEMBLY=ON -DLLVM_DIR="$Env:LLVM_DIR" -Wno-dev `
-            -DCMAKE_INSTALL_PREFIX="halide-install"
+          $TargetName = "${{matrix.arch}}-${{matrix.os}}"
+          $CMakeToolchainFile = "$Env:GITHUB_WORKSPACE/llvm-prebuilt/cmake/$TargetName.cmake"
+          $CMakeArgs = @("-DCMAKE_BUILD_TYPE=Release", "-DBUILD_SHARED_LIBS=ON")
+          $CMakeArgs += @("-DWITH_TESTS=OFF", "-DWITH_TUTORIALS=OFF")
+          $CMakeArgs += @("-DWITH_DOCS=OFF", "-DWITH_UTILS=OFF")
+          $CMakeArgs += @("-DWITH_PYTHON_BINDINGS=OFF")
+          $CMakeArgs += @("-DTARGET_WEBASSEMBLY=ON")
+          $CMakeArgs += @("-Wno-dev")
+
+          if ('${{matrix.os}}' -eq 'macos') {
+            $AppleArch = @{'x86_64'='x86_64';'aarch64'='arm64'}['${{matrix.arch}}']
+            $CMakeArgs += @("-DCMAKE_OSX_ARCHITECTURES=`"$AppleArch`"")
+          }
+
+          cmake -G Ninja -S halide -B halide-build $CMakeArgs `
+            -DLLVM_DIR="$Env:LLVM_DIR" `
+            -DClang_DIR="$Env:CLANG_DIR" `
+            -DHALIDE_HOST_TOOLS_DIR="$Env:HALIDE_HOST_TOOLS_DIR" `
+            -DCMAKE_INSTALL_PREFIX="halide-install" `
+            -DCMAKE_TOOLCHAIN_FILE="$CMakeToolchainFile"
 
       - name: Build Halide
         run: cmake --build halide-build
