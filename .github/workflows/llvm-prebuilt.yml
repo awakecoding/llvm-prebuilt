@@ -62,7 +62,7 @@ jobs:
           sudo apt install libxml2-dev
           mkdir libxml2-dev-arm64 && cd libxml2-dev-arm64
           $LibXmlDebFile = if ($(lsb_release -rs) -eq '20.04') {
-            "libxml2-dev_2.9.10+dfsg-5ubuntu0.20.04.4_arm64.deb"
+            "libxml2-dev_2.9.10+dfsg-5ubuntu0.20.04.5_arm64.deb"
           } else {
             "libxml2-dev_2.9.13+dfsg-1build1_arm64.deb"
           }
@@ -130,10 +130,20 @@ jobs:
         shell: pwsh
         run: |
           $TargetName = "${{matrix.arch}}-${{matrix.os}}"
-          $CMakeCache = "$Env:GITHUB_WORKSPACE/llvm-prebuilt/cmake/$TargetName.cmake"
-          cmake -G Ninja -S llvm-project/llvm -B llvm-build `
+          $CMakeToolchainFile = "$Env:GITHUB_WORKSPACE/llvm-prebuilt/cmake/$TargetName.cmake"
+          $CMakeInitialCache = "$Env:GITHUB_WORKSPACE/llvm-prebuilt/cmake/llvm-distribution.cmake"
+
+          $CMakeArgs = @()
+
+          if ('${{matrix.os}}' -eq 'macos') {
+            $AppleArch = @{'x86_64'='x86_64';'aarch64'='arm64'}['${{matrix.arch}}']
+            $CMakeArgs += @("-DCMAKE_OSX_ARCHITECTURES=`"$AppleArch`"")
+          }
+
+          cmake -G Ninja -S llvm-project/llvm -B llvm-build $CMakeArgs `
             -DCMAKE_INSTALL_PREFIX=llvm-install `
-            -C $CMakeCache -Wno-dev
+            -DCMAKE_TOOLCHAIN_FILE="$CMakeToolchainFile" `
+            -C $CMakeInitialCache -Wno-dev
 
       - name: Build LLVM
         run: cmake --build llvm-build

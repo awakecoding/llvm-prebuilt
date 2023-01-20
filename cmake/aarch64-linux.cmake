@@ -8,5 +8,3 @@ set(CMAKE_CXX_COMPILER aarch64-linux-gnu-g++)
 
 set(LLVM_TARGET_ARCH AArch64)
 set(LLVM_DEFAULT_TARGET_TRIPLE aarch64-linux-gnu)
-
-include("${CMAKE_CURRENT_LIST_DIR}/llvm-distribution.cmake")
