@@ -1,0 +1,151 @@
+name: GitHub Release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'release version'
+        required: true
+        default: '2023.1.0'
+      llvm_run_id:
+        description: 'llvm workflow run id'
+        default: "latest"
+        required: true
+      halide_run_id:
+        description: 'halide workflow run id'
+        default: "latest"
+        required: true
+      rust_run_id:
+        description: 'rust workflow run id'
+        default: "latest"
+        required: true
+      cctools_run_id:
+        description: 'cctools workflow run id'
+        default: "latest"
+        required: true
+      darling_run_id:
+        description: 'darling workflow run id'
+        default: "latest"
+        required: true
+      dry-run:
+        description: 'dry run (skip release)'
+        required: true
+        type: boolean
+        default: 'true'
+      draft-release:
+        description: 'Create draft release'
+        required: true
+        type: boolean
+        default: 'false'
+
+jobs:
+  publish:
+    name: Publish packages
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Download llvm
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $WorkflowName = "LLVM prebuilt"
+          $RunId = '${{ github.event.inputs.llvm_run_id }}'
+          if ($RunId -eq 'latest') {
+            $RunId = $(gh run list -w $WorkflowName --json 'status,databaseId,conclusion') |
+              ConvertFrom-Json | Where-Object { ($_.status -eq 'completed') -and ($_.conclusion -eq 'success') } |
+              Select-Object -First 1 -ExpandProperty databaseId
+          }
+          Write-Host "Downloading run $RunId ($WorkflowName)"
+          & gh run download $RunId
+
+      - name: Download halide
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $WorkflowName = "halide prebuilt"
+          $RunId = '${{ github.event.inputs.halide_run_id }}'
+          if ($RunId -eq 'latest') {
+            $RunId = $(gh run list -w $WorkflowName --json 'status,databaseId,conclusion') |
+              ConvertFrom-Json | Where-Object { ($_.status -eq 'completed') -and ($_.conclusion -eq 'success') } |
+              Select-Object -First 1 -ExpandProperty databaseId
+          }
+          Write-Host "Downloading run $RunId ($WorkflowName)"
+          & gh run download $RunId
+
+      - name: Download rust
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $WorkflowName = "Rust prebuilt"
+          $RunId = '${{ github.event.inputs.rust_run_id }}'
+          if ($RunId -eq 'latest') {
+            $RunId = $(gh run list -w $WorkflowName --json 'status,databaseId,conclusion') |
+              ConvertFrom-Json | Where-Object { ($_.status -eq 'completed') -and ($_.conclusion -eq 'success') } |
+              Select-Object -First 1 -ExpandProperty databaseId
+          }
+          Write-Host "Downloading run $RunId ($WorkflowName)"
+          & gh run download $RunId
+
+      - name: Download cctools
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $WorkflowName = "cctools prebuilt"
+          $RunId = '${{ github.event.inputs.cctools_run_id }}'
+          if ($RunId -eq 'latest') {
+            $RunId = $(gh run list -w $WorkflowName --json 'status,databaseId,conclusion') |
+              ConvertFrom-Json | Where-Object { ($_.status -eq 'completed') -and ($_.conclusion -eq 'success') } |
+              Select-Object -First 1 -ExpandProperty databaseId
+          }
+          Write-Host "Downloading run $RunId ($WorkflowName)"
+          & gh run download $RunId
+
+      - name: Download darling
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $WorkflowName = "darling prebuilt"
+          $RunId = '${{ github.event.inputs.darling_run_id }}'
+          if ($RunId -eq 'latest') {
+            $RunId = $(gh run list -w $WorkflowName --json 'status,databaseId,conclusion') |
+              ConvertFrom-Json | Where-Object { ($_.status -eq 'completed') -and ($_.conclusion -eq 'success') } |
+              Select-Object -First 1 -ExpandProperty databaseId
+          }
+          Write-Host "Downloading run $RunId ($WorkflowName)"
+          & gh run download $RunId
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        if: ${{ github.event.inputs.dry-run == 'false' }} 
+        run: |
+          $HashPath = 'checksums'
+          $Version = '${{ github.event.inputs.version }}'
+          $DraftRelease = [System.Convert]::ToBoolean('${{ github.event.inputs.draft-release }}')
+          $Files = Get-Item * | % { Get-FileHash -Algorithm SHA256 $_.FullName }
+          $Files | % { "$($_.Hash)  $(Split-Path $_.Path -Leaf)" } | Out-File -FilePath $HashPath -Append -Encoding ASCII
+
+          echo "::group::checksums"
+          Get-Content $HashPath
+          echo "::endgroup::"
+
+          $ReleaseTag = "v$Version"
+          $Repository = $Env:GITHUB_REPOSITORY
+          $ReleaseTitle = "v${Version}"
+
+          $Params = @(
+            $ReleaseTag,
+            '--repo', $Repository,
+            '--title', $ReleaseTitle
+          )
+
+          if ($DraftRelease) {
+            $Params += @('--draft')
+          }
+
+          & gh release create $Params ./*
