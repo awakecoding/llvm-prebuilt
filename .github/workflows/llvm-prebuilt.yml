@@ -7,50 +7,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [ x86_64, aarch64 ]
-        os: [ windows, macos, ubuntu-20.04, ubuntu-22.04 ]
-        version: [ 12.0.1, 14.0.6 ]
+        arch: [ x86_64 ]
+        os: [ ubuntu-20.04 ]
+        version: [ 16.0.6 ]
 
         include:
-          - version: 12.0.1
-            branch: release/12.x
-          - version: 14.0.6
-            branch: release/14.x
+          - version: 16.0.6
+            branch: release/16.x
 
-          - os: windows
-            runner: windows-2022
-          - os: macos
-            runner: macos-latest
           - os: ubuntu-20.04
             runner: ubuntu-20.04
-          - os: ubuntu-22.04
-            runner: ubuntu-22.04
+			arch: x86_64
 
-          - arch: x86_64
-            os: windows
-            msvc: amd64
-          - arch: aarch64
-            os: windows
-            msvc: amd64_arm64
-
-          - arch: x86_64
-            os: macos
-            osx_arch: x86_64
-          - arch: aarch64
-            os: macos
-            osx_arch: arm64
     steps:
-      - name: Configure Windows runner
-        if: runner.os == 'Windows'
-        run: |
-          choco install ninja 7zip
-
-      - name: Configure macOS runner
-        if: runner.os == 'macOS'
-        run: |
-          brew install ninja
-          echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
-
       - name: Configure Linux runner
         if: runner.os == 'Linux'
         shell: pwsh
@@ -78,7 +47,7 @@ jobs:
       - name: Clone project
         uses: actions/checkout@v3
         with:
-          path: llvm-prebuilt
+          path: llvm-bin
 
       - name: Clone LLVM ${{matrix.version}}
         uses: actions/checkout@v3
@@ -90,18 +59,8 @@ jobs:
       - name: Patch LLVM
         shell: pwsh
         run: |
-          if ('${{matrix.version}}' -eq '12.0.1') {
-            git -C llvm-project apply ../llvm-prebuilt/patches/llvm-12-add-lld-install-targets.patch
-          } else {
             git -C llvm-project apply ../llvm-prebuilt/patches/llvm-14-add-lld-install-targets.patch
             git -C llvm-project apply ../llvm-prebuilt/patches/llvm-14-force-disable-clang-ast-introspection.patch
-          }
-
-      - name: Enable Windows host environment
-        if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: amd64
 
       - name: Configure LLVM host tools
         run: "cmake -G Ninja -S llvm-project/llvm -B llvm-host
@@ -119,12 +78,6 @@ jobs:
           echo "CLANG_TABLEGEN=$HostBinPath/clang-tblgen$ExeExt" >> $Env:GITHUB_ENV
           echo "LLVM_CONFIG_PATH=$HostBinPath/llvm-config$ExeExt" >> $Env:GITHUB_ENV
           echo "LLVM_VERSION=${{matrix.version}}" >> $Env:GITHUB_ENV
-
-      - name: Enable Windows target environment
-        if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: ${{matrix.msvc}}
 
       - name: Configure LLVM
         shell: pwsh
@@ -154,17 +107,11 @@ jobs:
       - name: Package LLVM
         if: runner.os != 'Windows'
         run: |
-          mv llvm-install clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
-          tar -cJf clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
-
-      - name: Package LLVM
-        if: runner.os == 'Windows'
-        run: |
-          ren llvm-install clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
-          cmd.exe /c "7z a -ttar -snl -so clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}} | 7z a -si clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz"
+          mv llvm-install llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
+          tar -cJf llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
 
       - name: Upload LLVM package
         uses: actions/upload-artifact@v3
         with:
-          name: clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
-          path: clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz
+          name: llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
+          path: llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz
