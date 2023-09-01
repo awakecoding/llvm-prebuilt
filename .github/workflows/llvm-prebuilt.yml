@@ -14,10 +14,9 @@ jobs:
         include:
           - version: 16.0.6
             branch: release/16.x
-
-          - os: ubuntu-20.04
+            os: ubuntu-20.04
             runner: ubuntu-20.04
-			arch: x86_64
+            arch: x86_64
 
     steps:
       - name: Configure Linux runner
