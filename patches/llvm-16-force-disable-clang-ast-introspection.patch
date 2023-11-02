@@ -1,0 +1,30 @@
+From b3d333caed42699978c45565002a706ffc1b8e5a Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marc-Andr=C3=A9=20Moreau?= <mamoreau@devolutions.net>
+Date: Thu, 2 Nov 2023 10:04:13 -0400
+Subject: [PATCH] [PATCH] force-disable clang ast introspection
+
+---
+ clang/lib/Tooling/CMakeLists.txt | 7 +------
+ 1 file changed, 1 insertion(+), 6 deletions(-)
+
+diff --git a/clang/lib/Tooling/CMakeLists.txt b/clang/lib/Tooling/CMakeLists.txt
+index e4ce43762d6b..4e7c9f86f3d3 100644
+--- a/clang/lib/Tooling/CMakeLists.txt
++++ b/clang/lib/Tooling/CMakeLists.txt
+@@ -24,12 +24,7 @@ string(SUBSTRING ${CMAKE_CURRENT_BINARY_DIR} 0 ${PATH_LIB_START} PATH_HEAD)
+ string(SUBSTRING ${CMAKE_CURRENT_BINARY_DIR} ${PATH_LIB_END} -1 PATH_TAIL)
+ string(CONCAT BINARY_INCLUDE_DIR ${PATH_HEAD} "/include/clang/" ${PATH_TAIL})
+ 
+-if (NOT Python3_EXECUTABLE
+-    OR APPLE
+-    OR CMAKE_CROSSCOMPILING
+-    OR GENERATOR_IS_MULTI_CONFIG
+-    OR NOT LLVM_NATIVE_ARCH IN_LIST LLVM_TARGETS_TO_BUILD
+-    )
++if (TRUE) # force-disable clang ast introspection
+     configure_file(
+       EmptyNodeIntrospection.inc.in
+       ${BINARY_INCLUDE_DIR}/NodeIntrospection.inc
+-- 
+2.25.1
+
