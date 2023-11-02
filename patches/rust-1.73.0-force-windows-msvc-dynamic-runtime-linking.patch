@@ -1,20 +1,20 @@
-From 07f891e6d5a2524c95bfdf73969df532bf1742fb Mon Sep 17 00:00:00 2001
+From 83b2827d0c833b8676677a0053e5c6ea55be668b Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Marc-Andr=C3=A9=20Moreau?= <mamoreau@devolutions.net>
-Date: Tue, 27 Sep 2022 21:11:58 -0400
-Subject: [PATCH] force Windows MSVC dynamic runtime linking
+Date: Thu, 2 Nov 2023 09:45:19 -0400
+Subject: [PATCH] [PATCH] force Windows MSVC dynamic runtime linking
 
 ---
  src/bootstrap/bin/rustc.rs | 2 +-
  src/bootstrap/bootstrap.py | 2 +-
  src/bootstrap/builder.rs   | 2 +-
- src/bootstrap/cc_detect.rs | 6 +++---
- 4 files changed, 6 insertions(+), 6 deletions(-)
+ src/bootstrap/cc_detect.rs | 4 ++--
+ 4 files changed, 5 insertions(+), 5 deletions(-)
 
 diff --git a/src/bootstrap/bin/rustc.rs b/src/bootstrap/bin/rustc.rs
-index 40a3cc6d12c..5e45fee3a43 100644
+index 10718aeb89f..6bff20c84c1 100644
 --- a/src/bootstrap/bin/rustc.rs
 +++ b/src/bootstrap/bin/rustc.rs
-@@ -120,7 +120,7 @@ fn main() {
+@@ -128,7 +128,7 @@ fn main() {
  
          if let Ok(s) = env::var("RUSTC_HOST_CRT_STATIC") {
              if s == "true" {
@@ -24,11 +24,11 @@ index 40a3cc6d12c..5e45fee3a43 100644
              if s == "false" {
                  cmd.arg("-C").arg("target-feature=-crt-static");
 diff --git a/src/bootstrap/bootstrap.py b/src/bootstrap/bootstrap.py
-index 03eec02a8bf..03e53de6a67 100644
+index f44a05a6b28..976f6510661 100644
 --- a/src/bootstrap/bootstrap.py
 +++ b/src/bootstrap/bootstrap.py
-@@ -737,7 +737,7 @@ class RustBuild(object):
-         build_section = "target.{}".format(self.build)
+@@ -920,7 +920,7 @@ class RustBuild(object):
+ 
          target_features = []
          if self.get_toml("crt-static", build_section) == "true":
 -            target_features += ["+crt-static"]
@@ -37,10 +37,10 @@ index 03eec02a8bf..03e53de6a67 100644
              target_features += ["-crt-static"]
          if target_features:
 diff --git a/src/bootstrap/builder.rs b/src/bootstrap/builder.rs
-index 0ab4824ac0a..ca52f4f7733 100644
+index b3666192853..198b1e0a46d 100644
 --- a/src/bootstrap/builder.rs
 +++ b/src/bootstrap/builder.rs
-@@ -1788,7 +1788,7 @@ pub fn cargo(
+@@ -1728,7 +1728,7 @@ pub fn cargo(
  
          if let Some(x) = self.crt_static(target) {
              if x {
@@ -50,16 +50,14 @@ index 0ab4824ac0a..ca52f4f7733 100644
                  rustflags.arg("-Ctarget-feature=-crt-static");
              }
 diff --git a/src/bootstrap/cc_detect.rs b/src/bootstrap/cc_detect.rs
-index 759a99c330c..fe2b1c53024 100644
+index 2496c2a9db5..6f0985310ae 100644
 --- a/src/bootstrap/cc_detect.rs
 +++ b/src/bootstrap/cc_detect.rs
-@@ -70,12 +70,12 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
-         .target(&target.triple)
+@@ -75,11 +75,11 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
          .host(&build.build.triple);
      match build.crt_static(target) {
--        Some(a) => {
+         Some(a) => {
 -            cfg.static_crt(a);
-+        Some(_a) => {
 +            cfg.static_crt(false);
          }
          None => {

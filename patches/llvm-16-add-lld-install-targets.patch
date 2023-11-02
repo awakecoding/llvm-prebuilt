@@ -1,7 +1,7 @@
-From ef2e03b4ce1244c71fd6fdf918285c948d32a54c Mon Sep 17 00:00:00 2001
+From 6fbd9ec3d6c33a6ea0092aa197e40008e97c12e2 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Marc-Andr=C3=A9=20Moreau?= <mamoreau@devolutions.net>
-Date: Wed, 8 Sep 2021 08:49:13 -0400
-Subject: [PATCH] add lld install targets
+Date: Thu, 2 Nov 2023 10:02:08 -0400
+Subject: [PATCH] [PATCH] add lld install targets
 
 ---
  lld/CMakeLists.txt             | 32 ++++++++++++++++++++++++++++++++
@@ -9,30 +9,30 @@ Subject: [PATCH] add lld install targets
  2 files changed, 33 insertions(+), 1 deletion(-)
 
 diff --git a/lld/CMakeLists.txt b/lld/CMakeLists.txt
-index 2e99564f4..9f72266b3 100644
+index 3d6225646fe6..f9a9aa4aedf2 100644
 --- a/lld/CMakeLists.txt
 +++ b/lld/CMakeLists.txt
-@@ -189,9 +189,19 @@ include_directories(BEFORE
+@@ -195,9 +195,19 @@ include_directories(BEFORE
  if (NOT LLVM_INSTALL_TOOLCHAIN_ONLY)
    install(DIRECTORY include/
-     DESTINATION include
+     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
 +    COMPONENT lld-headers
      FILES_MATCHING
      PATTERN "*.h"
      )
 +
-+  add_custom_target(lld-headers)
-+  set_target_properties(lld-headers PROPERTIES FOLDER "Misc")
++    add_custom_target(lld-headers)
++    set_target_properties(lld-headers PROPERTIES FOLDER "Misc")
 +
-+  if(NOT LLVM_ENABLE_IDE)
-+    add_llvm_install_targets(install-lld-headers
-+                            DEPENDS lld-headers
-+                            COMPONENT lld-headers)
-+  endif()
++    if(NOT LLVM_ENABLE_IDE)
++      add_llvm_install_targets(install-lld-headers
++                              DEPENDS lld-headers
++                              COMPONENT lld-headers)
++    endif()
  endif()
  
  add_subdirectory(Common)
-@@ -210,4 +220,26 @@ add_subdirectory(MachO)
+@@ -214,4 +224,26 @@ add_subdirectory(MachO)
  add_subdirectory(MinGW)
  add_subdirectory(wasm)
  
@@ -60,12 +60,12 @@ index 2e99564f4..9f72266b3 100644
 +
  add_subdirectory(cmake/modules)
 diff --git a/lld/cmake/modules/AddLLD.cmake b/lld/cmake/modules/AddLLD.cmake
-index 9883475d1..b2f597191 100644
+index d3924f7243d4..e34a8631ae62 100644
 --- a/lld/cmake/modules/AddLLD.cmake
 +++ b/lld/cmake/modules/AddLLD.cmake
-@@ -21,7 +21,7 @@ macro(add_lld_library name)
+@@ -22,7 +22,7 @@ macro(add_lld_library name)
        ARCHIVE DESTINATION lib${LLVM_LIBDIR_SUFFIX}
-       RUNTIME DESTINATION bin)
+       RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
  
 -    if (${ARG_SHARED} AND NOT CMAKE_CONFIGURATION_TYPES)
 +    if (NOT CMAKE_CONFIGURATION_TYPES)

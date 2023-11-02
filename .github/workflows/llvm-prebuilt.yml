@@ -9,13 +9,13 @@ jobs:
       matrix:
         arch: [ x86_64, aarch64 ]
         os: [ windows, macos, ubuntu-20.04, ubuntu-22.04 ]
-        version: [ 12.0.1, 14.0.6 ]
+        version: [ 14.0.6, 16.0.6 ]
 
         include:
-          - version: 12.0.1
-            branch: release/12.x
           - version: 14.0.6
             branch: release/14.x
+          - version: 16.0.6
+            branch: release/16.x
 
           - os: windows
             runner: windows-2022
@@ -49,7 +49,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew install ninja
-          echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
+          echo "MACOSX_DEPLOYMENT_TARGET=10.13" >> $GITHUB_ENV
 
       - name: Configure Linux runner
         if: runner.os == 'Linux'
@@ -62,7 +62,7 @@ jobs:
           sudo apt install libxml2-dev
           mkdir libxml2-dev-arm64 && cd libxml2-dev-arm64
           $LibXmlDebFile = if ($(lsb_release -rs) -eq '20.04') {
-            "libxml2-dev_2.9.10+dfsg-5ubuntu0.20.04.5_arm64.deb"
+            "libxml2-dev_2.9.10+dfsg-5ubuntu0.20.04.6_arm64.deb"
           } else {
             "libxml2-dev_2.9.13+dfsg-1build1_arm64.deb"
           }
@@ -90,11 +90,14 @@ jobs:
       - name: Patch LLVM
         shell: pwsh
         run: |
-          if ('${{matrix.version}}' -eq '12.0.1') {
-            git -C llvm-project apply ../llvm-prebuilt/patches/llvm-12-add-lld-install-targets.patch
-          } else {
+          if ('${{matrix.version}}' -eq '14.0.6') {
             git -C llvm-project apply ../llvm-prebuilt/patches/llvm-14-add-lld-install-targets.patch
+            git -C llvm-project apply ../llvm-prebuilt/patches/llvm-14-add-llvm-name-prefix-to-llc-lli-opt-tools.patch
             git -C llvm-project apply ../llvm-prebuilt/patches/llvm-14-force-disable-clang-ast-introspection.patch
+          } else {
+            git -C llvm-project apply ../llvm-prebuilt/patches/llvm-16-add-lld-install-targets.patch
+            git -C llvm-project apply ../llvm-prebuilt/patches/llvm-16-add-llvm-name-prefix-to-llc-lli-opt-tools.patch
+            git -C llvm-project apply ../llvm-prebuilt/patches/llvm-16-force-disable-clang-ast-introspection.patch
           }
 
       - name: Enable Windows host environment
@@ -104,17 +107,22 @@ jobs:
           arch: amd64
 
       - name: Configure LLVM host tools
-        run: "cmake -G Ninja -S llvm-project/llvm -B llvm-host
-                    -DCMAKE_BUILD_TYPE=Release
-                    -DLLVM_ENABLE_PROJECTS=clang
-                    -Wno-dev"
+        shell: pwsh
+        run: |
+          cmake -G Ninja -S llvm-project/llvm -B llvm-host `
+            -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" `
+            -DCMAKE_BUILD_TYPE=Release -Wno-dev
 
       - name: Build LLVM host tools
         shell: pwsh
         run: |
           cmake --build llvm-host --target llvm-tblgen clang-tblgen llvm-config
+          if ('${{matrix.version}}' -eq '16.0.6') {
+            cmake --build llvm-host --target clang-tidy-confusable-chars-gen clang-pseudo-gen
+          }
           $HostBinPath = "$Env:GITHUB_WORKSPACE/llvm-host/bin"
           $ExeExt = if ($IsWindows) { ".exe" } else { "" }
+          echo "LLVM_NATIVE_TOOL_DIR=$HostBinPath" >> $Env:GITHUB_ENV
           echo "LLVM_TABLEGEN=$HostBinPath/llvm-tblgen$ExeExt" >> $Env:GITHUB_ENV
           echo "CLANG_TABLEGEN=$HostBinPath/clang-tblgen$ExeExt" >> $Env:GITHUB_ENV
           echo "LLVM_CONFIG_PATH=$HostBinPath/llvm-config$ExeExt" >> $Env:GITHUB_ENV

@@ -9,7 +9,7 @@ jobs:
       matrix:
         arch: [ x86_64 ]
         os: [ windows, macos, ubuntu-20.04, ubuntu-22.04 ]
-        version: [ 1.64.0 ]
+        version: [ 1.73.0 ]
 
         include:
           - os: windows
@@ -35,7 +35,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew install ninja
-          echo "MACOSX_DEPLOYMENT_TARGET=10.12" >> $GITHUB_ENV
+          echo "MACOSX_DEPLOYMENT_TARGET=10.13" >> $GITHUB_ENV
 
       - name: Configure Linux runner
         if: runner.os == 'Linux'
@@ -137,7 +137,6 @@ jobs:
       - name: Patch Rust
         shell: pwsh
         run: |
-          git -C rust apply ../llvm-prebuilt/patches/rust-${{matrix.version}}-allow-dynamic-linking-for-ios-targets.patch
           git -C rust apply ../llvm-prebuilt/patches/rust-${{matrix.version}}-disable-filecheck-tool-sanity-checks.patch
           if ($IsWindows) {
             git -C rust apply ../llvm-prebuilt/patches/rust-${{matrix.version}}-force-windows-msvc-dynamic-runtime-linking.patch

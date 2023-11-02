@@ -1,0 +1,27 @@
+From 9c7165d0db53f0aef98090c3a5dd863fdd46a755 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marc-Andr=C3=A9=20Moreau?= <mamoreau@devolutions.net>
+Date: Thu, 2 Nov 2023 10:12:14 -0400
+Subject: [PATCH] [PATCH] add llvm name prefix to llc,lli,opt tools
+
+---
+ llvm/tools/CMakeLists.txt | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/llvm/tools/CMakeLists.txt b/llvm/tools/CMakeLists.txt
+index c6116ac81d12..12c6b9a037ee 100644
+--- a/llvm/tools/CMakeLists.txt
++++ b/llvm/tools/CMakeLists.txt
+@@ -58,6 +58,10 @@ endforeach(p)
+ 
+ set(LLVM_COMMON_DEPENDS ${LLVM_COMMON_DEPENDS} PARENT_SCOPE)
+ 
++set_target_properties(llc PROPERTIES OUTPUT_NAME "llvm-llc")
++set_target_properties(lli PROPERTIES OUTPUT_NAME "llvm-lli")
++set_target_properties(opt PROPERTIES OUTPUT_NAME "llvm-opt")
++
+ if (LLVM_TOOL_LLVM_DRIVER_BUILD)
+   # This is explicitly added at the end _after_ all tool projects so that it can
+   # scrape up tools from other projects into itself.
+-- 
+2.25.1
+

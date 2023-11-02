@@ -5,7 +5,7 @@ on:
       version:
         description: 'release version'
         required: true
-        default: '2023.1.0'
+        default: '2023.3.0'
       llvm_run_id:
         description: 'llvm workflow run id'
         default: "latest"
@@ -20,10 +20,6 @@ on:
         required: true
       cctools_run_id:
         description: 'cctools workflow run id'
-        default: "latest"
-        required: true
-      darling_run_id:
-        description: 'darling workflow run id'
         default: "latest"
         required: true
       dry-run:
@@ -99,22 +95,6 @@ jobs:
           $Workflow = "cctools prebuilt"
           $Repository = $Env:GITHUB_REPOSITORY
           $RunId = '${{ github.event.inputs.cctools_run_id }}'
-          if ($RunId -eq 'latest') {
-            $RunId = $(gh run list -R $Repository -w $Workflow --json 'status,databaseId,conclusion') |
-              ConvertFrom-Json | Where-Object { ($_.status -eq 'completed') -and ($_.conclusion -eq 'success') } |
-              Select-Object -First 1 -ExpandProperty databaseId
-          }
-          Write-Host "Downloading run $RunId ($Workflow)"
-          & gh run download -R $Repository $RunId
-
-      - name: Download darling
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $Workflow = "darling prebuilt"
-          $Repository = $Env:GITHUB_REPOSITORY
-          $RunId = '${{ github.event.inputs.darling_run_id }}'
           if ($RunId -eq 'latest') {
             $RunId = $(gh run list -R $Repository -w $Workflow --json 'status,databaseId,conclusion') |
               ConvertFrom-Json | Where-Object { ($_.status -eq 'completed') -and ($_.conclusion -eq 'success') } |

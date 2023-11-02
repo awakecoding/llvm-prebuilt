@@ -29,6 +29,10 @@ jobs:
           cd xar/xar
           ./autogen.sh
           ./configure --prefix=/tmp/cctools
+          make
+          make install
+          rm /tmp/cctools/lib/libxar.la
+          mv $(readlink -f /tmp/cctools/lib/libxar.so) /tmp/cctools/lib/libxar.so
           cd ..
 
       - name: Build libtapi
@@ -37,8 +41,7 @@ jobs:
           cd apple-libtapi
           INSTALLPREFIX=/tmp/cctools ./build.sh
           ./install.sh
-          rm /tmp/cctools/lib/libtapi.so
-          mv /tmp/cctools/lib/libtapi.so.8svn /tmp/cctools/lib/libtapi.so
+          mv $(readlink -f /tmp/cctools/lib/libtapi.so) /tmp/cctools/lib/libtapi.so
           cd ..
 
       - name: Build cctools
