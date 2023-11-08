@@ -22,6 +22,27 @@ jobs:
             runner: ubuntu-22.04
   
     steps:
+      - name: Preflight
+        shell: pwsh
+        run: |
+          $LlvmVersion = "16.0.6"
+          $LlvmRunId = '${{ github.event.inputs.run_id }}'
+          if ($LlvmRunId -eq 'latest') {
+            $LlvmRunId = $(gh run list -w 'LLVM prebuilt' --json 'status,databaseId,conclusion') |
+              ConvertFrom-Json | Where-Object { ($_.status -eq 'completed') -and ($_.conclusion -eq 'success') } |
+              Select-Object -First 1 -ExpandProperty databaseId
+          }
+          echo "LLVM_VERSION=$LlvmVersion" >> $Env:GITHUB_ENV
+          echo "LLVM_RUN_ID=$LlvmRunId" >> $Env:GITHUB_ENV
+
+          $RustBuildDir = if ($IsWindows) { "C:\rust" } else { "${{runner.temp}}" }
+          echo "RUST_BUILD_DIR=$RustBuildDir" >> $Env:GITHUB_ENV
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
       - name: Configure Windows runner
         if: runner.os == 'Windows'
         shell: pwsh
@@ -29,7 +50,7 @@ jobs:
           choco install --no-progress ninja 7zip wget
           Install-Module VsDevShell -Force
           docker system prune -a -f # free some space on C:\
-          New-Item -Path "C:\rust" -ItemType Directory | Out-Null
+          New-Item -Path $Env:RUST_BUILD_DIR -ItemType Directory | Out-Null
 
       - name: Configure macOS runner
         if: runner.os == 'macOS'
@@ -86,20 +107,26 @@ jobs:
 
       - name: Install clang+llvm
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          $CLANG_LLVM_OS='${{matrix.os}}'.ToLower()
-          $CLANG_LLVM_BASE_URL="https://github.com/awakecoding/llvm-prebuilt/releases/download/v2022.2.0"
-          $CLANG_LLVM_NAME="clang+llvm-14.0.6-x86_64-${CLANG_LLVM_OS}"
-          wget -q "${CLANG_LLVM_BASE_URL}/${CLANG_LLVM_NAME}.tar.xz"
+          $LlvmPlatform='${{matrix.os}}'
+          $LlvmArch='x86_64'
+          $LlvmVersion = $Env:LLVM_VERSION
+          $LlvmRunId = $Env:LLVM_RUN_ID
+          $LlvmName="clang+llvm-${LlvmVersion}-${LlvmArch}-${LlvmPlatform}"
+          & gh run download $LlvmRunId --repo $Env:GITHUB_REPOSITORY -n $LlvmName
           if ($IsWindows) {
-            $LLVM_PREFIX="C:/llvm"
-            cmd.exe /c "7z.exe x ${CLANG_LLVM_NAME}.tar.xz -so | 7z x -si -ttar -o`"C:/temp`""
-            mv "C:/temp/${CLANG_LLVM_NAME}" $LLVM_PREFIX
+            $TempDir = "C:/temp"
+            $LLVM_PREFIX = "C:/llvm"
+            cmd.exe /c "7z.exe x ${LlvmName}.tar.xz -so | 7z x -si -ttar -o`"C:/temp`""
+            mv "$TempDir/${LlvmName}" $LLVM_PREFIX
             $LLVM_CONFIG="$LLVM_PREFIX/bin/llvm-config.exe"
           } else {
-            $LLVM_PREFIX="/opt/llvm"
-            tar -xf "${CLANG_LLVM_NAME}.tar.xz" -C /tmp
-            sudo mv "/tmp/${CLANG_LLVM_NAME}" $LLVM_PREFIX
+            $TempDir = "/tmp"
+            $LLVM_PREFIX = "/opt/llvm"
+            tar -xvf "${LlvmName}.tar.xz" -C $TempDir
+            sudo mv "$TempDir/${LlvmName}" $LLVM_PREFIX
             $LLVM_CONFIG="$LLVM_PREFIX/bin/llvm-config"
           }
           $LLVM_BIN_PATH="$LLVM_PREFIX/bin"
@@ -107,18 +134,6 @@ jobs:
           echo "LLVM_DIR=$LLVM_DIR" >> $Env:GITHUB_ENV
           echo "LLVM_CONFIG=$LLVM_CONFIG" >> $Env:GITHUB_ENV
           echo "PATH=$LLVM_BIN_PATH$([IO.Path]::PathSeparator)$Env:PATH" >> $Env:GITHUB_ENV
-
-      - name: Setup dynamic variables
-        id: dynamic-variables
-        shell: pwsh
-        run: |
-          $RustBuildDir = if ($IsWindows) { "C:\rust" } else { "${{runner.temp}}" }
-          echo "::set-output name=rust-build-dir::$RustBuildDir"
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
 
       - name: Clone project
         uses: actions/checkout@v3
@@ -146,7 +161,7 @@ jobs:
         shell: pwsh
         working-directory: rust
         run: |
-          $RustBuildDir = "${{steps.dynamic-variables.outputs.rust-build-dir}}".Replace('\','\\')
+          $RustBuildDir = "$Env:RUST_BUILD_DIR".Replace('\','\\')
           $RustLlvmConfig = $Env:LLVM_CONFIG.Replace('\','\\')
           $RustHostArch = '${{matrix.arch}}'
           $RustHostPlatform = @{'windows'='pc-windows-msvc';
@@ -197,4 +212,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: rust-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
-          path: ${{steps.dynamic-variables.outputs.rust-build-dir}}/dist
+          path: ${{ env.RUST_BUILD_DIR }}/dist
