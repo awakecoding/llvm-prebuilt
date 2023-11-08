@@ -64,7 +64,7 @@ jobs:
       - name: Preflight
         shell: pwsh
         run: |
-          $LlvmVersion = if ('${{matrix.version}}' -eq "14.0.0") { "14.0.6" } else { "16.0.6" }
+          $LlvmVersion = "16.0.6"
           $LlvmRunId = '${{ github.event.inputs.run_id }}'
           if ($LlvmRunId -eq 'latest') {
             $LlvmRunId = $(gh run list -w 'LLVM prebuilt' --json 'status,databaseId,conclusion') |
@@ -163,16 +163,9 @@ jobs:
       - name: Patch Halide
         shell: pwsh
         run: |
-          if ('${{matrix.version}}' -eq '14.0.0') {
-            git -C halide apply ../llvm-prebuilt/patches/halide-14-add-halide-host-tools-dir-cmake-option.patch
-            git -C halide apply ../llvm-prebuilt/patches/halide-14-disable-autoschedulers.patch
-            git -C halide apply ../llvm-prebuilt/patches/halide-14-disable-imported-clang-llvm-executables.patch
-            git -C halide apply ../llvm-prebuilt/patches/halide-14-add-clang-no-unknown-warning-option.patch
-          } else {
-            git -C halide apply ../llvm-prebuilt/patches/halide-16-add-halide-host-tools-dir-cmake-option.patch
-            git -C halide apply ../llvm-prebuilt/patches/halide-16-disable-autoschedulers.patch
-            git -C halide apply ../llvm-prebuilt/patches/halide-16-disable-clang-verbose-build-warnings.patch
-          }
+          git -C halide apply ../llvm-prebuilt/patches/halide-16-add-halide-host-tools-dir-cmake-option.patch
+          git -C halide apply ../llvm-prebuilt/patches/halide-16-disable-autoschedulers.patch
+          git -C halide apply ../llvm-prebuilt/patches/halide-16-disable-clang-verbose-build-warnings.patch
 
       - name: Build Halide host tools
         shell: pwsh
