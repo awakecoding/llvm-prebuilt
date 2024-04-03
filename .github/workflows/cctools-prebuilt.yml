@@ -59,7 +59,7 @@ jobs:
           tar -cJf cctools-${{matrix.arch}}-${{matrix.os}}.tar.xz cctools-${{matrix.arch}}-${{matrix.os}}
 
       - name: Upload cctools package
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cctools-${{matrix.arch}}-${{matrix.os}}
           path: cctools-${{matrix.arch}}-${{matrix.os}}.tar.xz
