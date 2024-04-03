@@ -46,7 +46,7 @@ jobs:
           tar -cJf xcode-bundle.tar.xz ./xcode-bundle
 
       - name: Upload xcode-bundle package
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: xcode-bundle
           path: xcode-bundle.tar.xz

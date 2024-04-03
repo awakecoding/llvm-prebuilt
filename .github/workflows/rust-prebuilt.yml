@@ -136,12 +136,12 @@ jobs:
           echo "PATH=$LLVM_BIN_PATH$([IO.Path]::PathSeparator)$Env:PATH" >> $Env:GITHUB_ENV
 
       - name: Clone project
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: llvm-prebuilt
 
       - name: Clone Rust ${{matrix.version}}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: rust-lang/rust
           ref: ${{matrix.version}}
@@ -209,7 +209,7 @@ jobs:
           python x.py dist
 
       - name: Upload Rust
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: rust-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
           path: ${{ env.RUST_BUILD_DIR }}/dist

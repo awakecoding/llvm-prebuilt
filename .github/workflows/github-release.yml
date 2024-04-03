@@ -26,12 +26,12 @@ on:
         description: 'dry run (skip release)'
         required: true
         type: boolean
-        default: 'true'
+        default: true
       draft-release:
         description: 'Create draft release'
         required: true
         type: boolean
-        default: 'false'
+        default: false
 
 jobs:
   publish:

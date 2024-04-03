@@ -43,13 +43,13 @@ jobs:
           cmd.exe /c "7z a -ttar -snl -so winsdk.tar winsdk | 7z a -si winsdk.tar.xz"
 
       - name: Upload vctools package
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: vctools
           path: vctools.tar.xz
 
       - name: Upload winsdk package
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: winsdk
           path: winsdk.tar.xz
