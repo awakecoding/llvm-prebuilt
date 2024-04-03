@@ -59,6 +59,7 @@ jobs:
           sudo apt install zstd xz-utils
           sudo apt install ninja-build
           sudo apt install g++-aarch64-linux-gnu
+
           sudo apt install libxml2-dev
           mkdir libxml2-dev-arm64 && cd libxml2-dev-arm64
           $LibXmlDebFile = if ($(lsb_release -rs) -eq '20.04') {
@@ -74,6 +75,24 @@ jobs:
             tar -xf data.tar.xz
           }
           sudo cp -R ./usr/lib/aarch64-linux-gnu/ /usr/lib/aarch64-linux-gnu
+          cd ..
+
+          sudo apt install zlib1g-dev
+          mkdir zlib1g-dev-arm64 && cd zlib1g-dev-arm64
+          $ZlibDebFile = if ($(lsb_release -rs) -eq '20.04') {
+            "zlib1g-dev_1.2.11.dfsg-2ubuntu1_arm64.deb"
+          } else {
+            "zlib1g-dev_1.2.11.dfsg-2ubuntu9_arm64.deb"
+          }
+          wget -q "http://ports.ubuntu.com/pool/main/z/zlib/$ZlibDebFile"
+          ar -x "$ZlibDebFile"
+          if (Test-Path 'data.tar.zst') {
+            tar --use-compress-program=unzstd -xf data.tar.zst
+          } else {
+            tar -xf data.tar.xz
+          }
+          sudo cp -R ./usr/lib/aarch64-linux-gnu/ /usr/lib/aarch64-linux-gnu
+          cd ..
 
       - name: Clone project
         uses: actions/checkout@v4
