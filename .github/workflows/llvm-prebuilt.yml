@@ -164,7 +164,7 @@ jobs:
 
           if ('${{matrix.os}}' -eq 'macos') {
             $AppleArch = @{'x86_64'='x86_64';'aarch64'='arm64'}['${{matrix.arch}}']
-            $CMakeArgs += @("-DCMAKE_OSX_ARCHITECTURES=`"$AppleArch`"")
+            $CMakeArgs += @("-DCMAKE_OSX_ARCHITECTURES=$AppleArch")
           }
 
           cmake -G Ninja -S llvm-project/llvm -B llvm-build $CMakeArgs `
