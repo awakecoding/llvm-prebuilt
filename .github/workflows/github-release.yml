@@ -14,10 +14,6 @@ on:
         description: 'halide workflow run id'
         default: "latest"
         required: true
-      rust_run_id:
-        description: 'rust workflow run id'
-        default: "latest"
-        required: true
       cctools_run_id:
         description: 'cctools workflow run id'
         default: "latest"
@@ -63,22 +59,6 @@ jobs:
           $Workflow = "halide prebuilt"
           $Repository = $Env:GITHUB_REPOSITORY
           $RunId = '${{ github.event.inputs.halide_run_id }}'
-          if ($RunId -eq 'latest') {
-            $RunId = $(gh run list -R $Repository -w $Workflow --json 'status,databaseId,conclusion') |
-              ConvertFrom-Json | Where-Object { ($_.status -eq 'completed') -and ($_.conclusion -eq 'success') } |
-              Select-Object -First 1 -ExpandProperty databaseId
-          }
-          Write-Host "Downloading run $RunId ($Workflow)"
-          & gh run download -R $Repository $RunId
-
-      - name: Download rust
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $Workflow = "Rust prebuilt"
-          $Repository = $Env:GITHUB_REPOSITORY
-          $RunId = '${{ github.event.inputs.rust_run_id }}'
           if ($RunId -eq 'latest') {
             $RunId = $(gh run list -R $Repository -w $Workflow --json 'status,databaseId,conclusion') |
               ConvertFrom-Json | Where-Object { ($_.status -eq 'completed') -and ($_.conclusion -eq 'success') } |

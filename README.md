@@ -22,10 +22,3 @@ Arch                  | Windows            | macOS              | Ubuntu 20.04  
 ----------------------|--------------------|--------------------|--------------------|--------------------
 x86_64                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark:
 aarch64               | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark:
-
-## Rust
-
-Arch                  | Windows            | macOS              | Ubuntu 20.04       | Ubuntu 22.04
-----------------------|--------------------|--------------------|--------------------|--------------------
-x86_64                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark:
-aarch64               | :white_large_square: | :white_large_square: | :white_large_square: | :white_large_square:
