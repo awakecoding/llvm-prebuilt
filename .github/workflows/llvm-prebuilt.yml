@@ -43,7 +43,16 @@ jobs:
       - name: Configure Windows runner
         if: runner.os == 'Windows'
         run: |
-          choco install ninja 7zip
+          choco install --no-progress ninja 7zip
+          git clone https://github.com/microsoft/vcpkg.git
+          cd vcpkg
+          .\bootstrap-vcpkg.bat
+          $VcpkgRootDir = "$PWD/vcpkg" -Replace '\\','/'
+          $VcpkgArch = @{'x86_64'='x64';'aarch64'='arm64'}['${{matrix.arch}}']
+          .\vcpkg install "zlib:${VcpkgArch}-windows-static-release"
+          .\vcpkg install "libxml2:${VcpkgArch}-windows-static-release"
+          echo "VCPKG_ARCH=$VcpkgArch" >> $Env:GITHUB_ENV
+          echo "VCPKG_ROOT_DIR=$VcpkgRootDir" >> $Env:GITHUB_ENV
 
       - name: Configure macOS runner
         if: runner.os == 'macOS'
@@ -161,6 +170,24 @@ jobs:
           $CMakeInitialCache = "$Env:GITHUB_WORKSPACE/llvm-prebuilt/cmake/llvm-distribution.cmake"
 
           $CMakeArgs = @()
+
+          if ('${{matrix.os}}' -eq 'windows') {
+            $ZLIB_ROOT_DIR="${Env:VCPKG_ROOT_DIR}/packages/zlib_${Env:VCPKG_ARCH}-windows-static"
+            $ZLIB_INCLUDE_DIR="$ZLIB_ROOT_DIR/include"
+            $ZLIB_LIBRARY="$ZLIB_ROOT_DIR/lib/zlib.lib"
+            $CMakeArgs += @(
+              "-DZLIB_INCLUDE_DIR=$ZLIB_INCLUDE_DIR",
+              "-DZLIB_LIBRARY=$ZLIB_LIBRARY"
+            )
+
+            $LIBXML2_ROOT_DIR="${Env:VCPKG_ROOT_DIR}/packages/libxml2_${Env:VCPKG_ARCH}-windows-static"
+            $LIBXML2_INCLUDE_DIR="$LIBXML2_ROOT_DIR/include"
+            $LIBXML2_LIBRARY="$LIBXML2_ROOT_DIR/lib/libxml2.lib"
+            $CMakeArgs += @(
+              "-DLIBXML2_INCLUDE_DIR=$LIBXML2_INCLUDE_DIR",
+              "-DLIBXML2_LIBRARY=$LIBXML2_LIBRARY"
+            )
+          }
 
           if ('${{matrix.os}}' -eq 'macos') {
             $AppleArch = @{'x86_64'='x86_64';'aarch64'='arm64'}['${{matrix.arch}}']

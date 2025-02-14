@@ -21,7 +21,7 @@ jobs:
           - os: windows
             runner: windows-2022
           - os: macos
-            runner: macos-12
+            runner: macos-latest
           - os: ubuntu-20.04
             runner: ubuntu-20.04
           - os: ubuntu-22.04
@@ -109,7 +109,7 @@ jobs:
           }
 
           echo "LLVM_HOST_BIN_DIR=$LLVM_BIN_DIR" >> $Env:GITHUB_ENV
-          echo "PATH=$LLVM_BIN_DIR$([IO.Path]::PathSeparator)$Env:PATH" >> $Env:GITHUB_ENV
+          #echo "PATH=$LLVM_BIN_DIR$([IO.Path]::PathSeparator)$Env:PATH" >> $Env:GITHUB_ENV
 
       - name: Install target clang+llvm
         if: matrix.arch == 'aarch64'
@@ -172,6 +172,10 @@ jobs:
         run: |
           if ($IsWindows) {
             Enter-VsDevShell x64
+            $CMAKE_MT = (Get-Command -Type Application mt).Source
+            $CMAKE_MT = cmd /c "for %A in (`"$CMAKE_MT`") do @echo %~sA" 2>&1 | Out-String
+            $CMAKE_MT = ($CMAKE_MT -Replace '\r|\n', '' -Replace '\\', '/').Trim()
+            echo "CMAKE_MT=$CMAKE_MT" >> $Env:GITHUB_ENV
           }
 
           cmake -G Ninja -S halide -B halide-host `
@@ -212,6 +216,10 @@ jobs:
           $CMakeArgs += @("-DWITH_PYTHON_BINDINGS=OFF")
           $CMakeArgs += @("-DTARGET_WEBASSEMBLY=ON")
           $CMakeArgs += @("-Wno-dev")
+
+          if ($IsWindows) {
+            $CMakeArgs += @("-DCMAKE_MT=${Env:CMAKE_MT}")
+          }
 
           if ('${{matrix.os}}' -eq 'macos') {
             $AppleArch = @{'x86_64'='x86_64';'aarch64'='arm64'}['${{matrix.arch}}']
