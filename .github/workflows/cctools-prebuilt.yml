@@ -8,13 +8,15 @@ jobs:
       fail-fast: false
       matrix:
         arch: [ x86_64 ]
-        os: [ ubuntu-20.04, ubuntu-22.04 ]
+        os: [ ubuntu-20.04, ubuntu-22.04, ubuntu-24.04 ]
 
         include:
           - os: ubuntu-20.04
             runner: ubuntu-20.04
           - os: ubuntu-22.04
             runner: ubuntu-22.04
+          - os: ubuntu-24.04
+            runner: ubuntu-24.04
   
     steps:
       - name: Configure Linux runner
@@ -44,11 +46,21 @@ jobs:
           mv $(readlink -f /tmp/cctools/lib/libtapi.so) /tmp/cctools/lib/libtapi.so
           cd ..
 
+      - name: Build libdispatch
+        run: |
+          git clone https://github.com/tpoechtrager/apple-libdispatch.git
+          cd apple-libdispatch
+          cmake -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_INSTALL_PREFIX="/tmp/cctools" .
+          ninja
+          ninja install
+          cd ..
+
       - name: Build cctools
         run: |
           git clone https://github.com/tpoechtrager/cctools-port.git
           cd cctools-port/cctools
-          ./configure --prefix=/tmp/cctools --with-libtapi=/tmp/cctools --with-libxar=/tmp/cctools
+          ./configure --prefix=/tmp/cctools --with-libtapi=/tmp/cctools --with-libxar=/tmp/cctools \
+            --with-libdispatch=/tmp/cctools --with-libblocksruntime=/tmp/cctools
           make
           make install
           cd ../..
