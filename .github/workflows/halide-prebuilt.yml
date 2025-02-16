@@ -15,7 +15,7 @@ jobs:
       matrix:
         arch: [ x86_64, aarch64 ]
         os: [ windows, macos, ubuntu-20.04, ubuntu-22.04 ]
-        version: [ 16.0.0 ]
+        version: [ 16.0.0, 18.0.0 ]
 
         include:
           - os: windows
@@ -163,9 +163,15 @@ jobs:
       - name: Patch Halide
         shell: pwsh
         run: |
-          git -C halide apply ../llvm-prebuilt/patches/halide-16-add-halide-host-tools-dir-cmake-option.patch
-          git -C halide apply ../llvm-prebuilt/patches/halide-16-disable-autoschedulers.patch
-          git -C halide apply ../llvm-prebuilt/patches/halide-16-disable-clang-verbose-build-warnings.patch
+          if ('${{matrix.version}}' -eq '16.0.0') {
+            git -C halide apply ../llvm-prebuilt/patches/halide-16-add-halide-host-tools-dir-cmake-option.patch
+            git -C halide apply ../llvm-prebuilt/patches/halide-16-disable-autoschedulers.patch
+            git -C halide apply ../llvm-prebuilt/patches/halide-16-disable-clang-verbose-build-warnings.patch
+          } else {
+            git -C halide apply ../llvm-prebuilt/patches/halide-18-add-halide-host-tools-dir-cmake-option.patch
+            git -C halide apply ../llvm-prebuilt/patches/halide-18-disable-autoschedulers.patch
+            git -C halide apply ../llvm-prebuilt/patches/halide-18-disable-clang-verbose-build-warnings.patch
+          }
 
       - name: Build Halide host tools
         shell: pwsh
@@ -214,6 +220,7 @@ jobs:
           $CMakeArgs += @("-DWITH_TESTS=OFF", "-DWITH_TUTORIALS=OFF")
           $CMakeArgs += @("-DWITH_DOCS=OFF", "-DWITH_UTILS=OFF")
           $CMakeArgs += @("-DWITH_PYTHON_BINDINGS=OFF")
+          $CMakeArgs += @("-DWITH_SERIALIZATION=OFF")
           $CMakeArgs += @("-DTARGET_WEBASSEMBLY=ON")
           $CMakeArgs += @("-Wno-dev")
 
