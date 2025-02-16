@@ -9,13 +9,15 @@ jobs:
       matrix:
         arch: [ x86_64, aarch64 ]
         os: [ windows, macos, ubuntu-20.04, ubuntu-22.04 ]
-        version: [ 14.0.6, 16.0.6 ]
+        version: [ 14.0.6, 16.0.6, 18.1.8 ]
 
         include:
           - version: 14.0.6
             branch: release/14.x
           - version: 16.0.6
             branch: release/16.x
+          - version: 18.1.8
+            branch: release/18.x
 
           - os: windows
             runner: windows-2022
@@ -122,10 +124,14 @@ jobs:
             git -C llvm-project apply ../llvm-prebuilt/patches/llvm-14-add-lld-install-targets.patch
             git -C llvm-project apply ../llvm-prebuilt/patches/llvm-14-add-llvm-name-prefix-to-llc-lli-opt-tools.patch
             git -C llvm-project apply ../llvm-prebuilt/patches/llvm-14-force-disable-clang-ast-introspection.patch
-          } else {
+          } elseif ('${{matrix.version}}' -eq '16.0.6') {
             git -C llvm-project apply ../llvm-prebuilt/patches/llvm-16-add-lld-install-targets.patch
             git -C llvm-project apply ../llvm-prebuilt/patches/llvm-16-add-llvm-name-prefix-to-llc-lli-opt-tools.patch
             git -C llvm-project apply ../llvm-prebuilt/patches/llvm-16-force-disable-clang-ast-introspection.patch
+          } elseif ('${{matrix.version}}' -eq '18.1.8') {
+            git -C llvm-project apply ../llvm-prebuilt/patches/llvm-18-add-lld-install-targets.patch
+            git -C llvm-project apply ../llvm-prebuilt/patches/llvm-18-add-llvm-name-prefix-to-llc-lli-opt-tools.patch
+            git -C llvm-project apply ../llvm-prebuilt/patches/llvm-18-force-disable-clang-ast-introspection.patch
           }
 
       - name: Enable Windows host environment
@@ -145,7 +151,7 @@ jobs:
         shell: pwsh
         run: |
           cmake --build llvm-host --target llvm-tblgen clang-tblgen llvm-config
-          if ('${{matrix.version}}' -eq '16.0.6') {
+          if ('${{matrix.version}}' -ne '14.0.6') {
             cmake --build llvm-host --target clang-tidy-confusable-chars-gen clang-pseudo-gen
           }
           $HostBinPath = "$Env:GITHUB_WORKSPACE/llvm-host/bin"
