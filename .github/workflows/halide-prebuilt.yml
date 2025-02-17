@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         arch: [ x86_64, aarch64 ]
-        os: [ windows, macos, ubuntu-20.04, ubuntu-22.04 ]
+        os: [ windows, macos, ubuntu-22.04, ubuntu-24.04 ]
         version: [ 16.0.0, 18.0.0 ]
 
         include:
@@ -22,10 +22,10 @@ jobs:
             runner: windows-2022
           - os: macos
             runner: macos-latest
-          - os: ubuntu-20.04
-            runner: ubuntu-20.04
           - os: ubuntu-22.04
             runner: ubuntu-22.04
+          - os: ubuntu-24.04
+            runner: ubuntu-24.04
 
           - arch: x86_64
             os: windows

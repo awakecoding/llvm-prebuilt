@@ -4,21 +4,21 @@ This is a repository to create prebuilt clang+llvm distributions for major opera
 
 ## clang-llvm
 
-Arch                  | Windows            | macOS              | Ubuntu 20.04       | Ubuntu 22.04       | Ubuntu 24.04
-----------------------|--------------------|--------------------|--------------------|--------------------|--------------------
-x86_64                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_large_square:
-aarch64               | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_large_square:
+Arch                  | Windows            | macOS              | Ubuntu 22.04       | Ubuntu 24.04       |
+----------------------|--------------------|--------------------|--------------------|--------------------|
+x86_64                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+aarch64               | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 
 ## ctools
 
-Arch                  | Windows            | macOS              | Ubuntu 20.04       | Ubuntu 22.04       | Ubuntu 24.04
-----------------------|--------------------|--------------------|--------------------|--------------------|--------------------
-x86_64                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_large_square:
-aarch64               | :heavy_check_mark: | :heavy_check_mark: | :white_large_square: | :heavy_check_mark:| :white_large_square:
+Arch                  | Windows            | macOS              | Ubuntu 22.04       | Ubuntu 24.04       |
+----------------------|--------------------|--------------------|--------------------|--------------------|
+x86_64                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+aarch64               | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 
 ## Halide
 
-Arch                  | Windows            | macOS              | Ubuntu 20.04       | Ubuntu 22.04       | Ubuntu 24.04
-----------------------|--------------------|--------------------|--------------------|--------------------|--------------------
-x86_64                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark:
-aarch64               | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark:
+Arch                  | Windows            | macOS              | Ubuntu 22.04       | Ubuntu 24.04       |
+----------------------|--------------------|--------------------|--------------------|--------------------|
+x86_64                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+aarch64               | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |

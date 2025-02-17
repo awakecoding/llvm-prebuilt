@@ -126,28 +126,13 @@ set(LLVM_TOOLCHAIN_TOOLS
     ${LLVM_BINUTILS_COMPONENTS}
     CACHE STRING "")
 
-if (${LLVM_VERSION} STREQUAL "12.0.1")
-    set(LLD_EXPORTED_TARGETS
-        lldCommon
-        lldCore
-        lldDriver
-        lldMachO
-        lldYAML
-        lldReaderWriter
-        lldCOFF
-        lldELF
-        lldMachO2
-        lldMinGW
-        lldWasm)
-else()
-    set(LLD_EXPORTED_TARGETS
-        lldCommon
-        lldCOFF
-        lldELF
-        lldMachO
-        lldMinGW
-        lldWasm)
-endif()
+set(LLD_EXPORTED_TARGETS
+    lldCommon
+    lldCOFF
+    lldELF
+    lldMachO
+    lldMinGW
+    lldWasm)
 
 set(LLVM_BUILD_UTILS ON CACHE BOOL "")
 set(LLVM_INSTALL_UTILS ON CACHE BOOL "")
