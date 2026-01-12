@@ -40,6 +40,11 @@ jobs:
             os: macos
             osx_arch: arm64
     steps:
+      - name: Clone project
+        uses: actions/checkout@v4
+        with:
+          path: llvm-prebuilt
+
       - name: Configure Windows runner
         if: runner.os == 'Windows'
         run: |
@@ -69,48 +74,22 @@ jobs:
           sudo apt install ninja-build
           sudo apt install g++-aarch64-linux-gnu
 
-          sudo apt install libxml2-dev
-          mkdir libxml2-dev-arm64 && cd libxml2-dev-arm64
-          $LibXmlDebFile = if ($(lsb_release -rs) -eq '22.04') {
-            # https://packages.ubuntu.com/jammy/arm64/libxml2-dev/download
-            "libxml2-dev_2.9.13+dfsg-1build1_arm64.deb"
-          } else {
-            # https://packages.ubuntu.com/noble/arm64/libxml2-dev/download
-            "libxml2-dev_2.9.14+dfsg-1.3ubuntu3_arm64.deb"
-          }
-          wget -q "http://ports.ubuntu.com/pool/main/libx/libxml2/$LibXmlDebFile"
-          ar -x "$LibXmlDebFile"
-          if (Test-Path 'data.tar.zst') {
-            tar --use-compress-program=unzstd -xf data.tar.zst
-          } else {
-            tar -xf data.tar.xz
-          }
-          sudo cp -R ./usr/lib/aarch64-linux-gnu/ /usr/lib/aarch64-linux-gnu
-          cd ..
+          # Install native packages
+          sudo apt install libxml2-dev zlib1g-dev
 
-          sudo apt install zlib1g-dev
-          mkdir zlib1g-dev-arm64 && cd zlib1g-dev-arm64
-          $ZlibDebFile = if ($(lsb_release -rs) -eq '22.04') {
-            # https://packages.ubuntu.com/jammy/arm64/zlib1g-dev/download
-            "zlib1g-dev_1.2.11.dfsg-2ubuntu9_arm64.deb"
-          } else {
-            # https://packages.ubuntu.com/noble/arm64/zlib1g-dev/download
-            "zlib1g-dev_1.3.dfsg-3.1ubuntu2_arm64.deb"
-          }
-          wget -q "http://ports.ubuntu.com/pool/main/z/zlib/$ZlibDebFile"
-          ar -x "$ZlibDebFile"
-          if (Test-Path 'data.tar.zst') {
-            tar --use-compress-program=unzstd -xf data.tar.zst
-          } else {
-            tar -xf data.tar.xz
-          }
-          sudo cp -R ./usr/lib/aarch64-linux-gnu/ /usr/lib/aarch64-linux-gnu
-          cd ..
-
-      - name: Clone project
-        uses: actions/checkout@v4
-        with:
-          path: llvm-prebuilt
+          # Get Ubuntu release for cross-compilation packages
+          $UbuntuRelease = lsb_release -rs
+          
+          # Download and extract arm64 packages using helper script
+          $ScriptPath = "$Env:GITHUB_WORKSPACE/llvm-prebuilt/scripts/Get-UbuntuPackage.ps1"
+          
+          # Extract libxml2-dev for arm64
+          $LibXmlPath = & $ScriptPath -PackageName "libxml2-dev" -Release $UbuntuRelease -Architecture "arm64"
+          sudo cp -R "$LibXmlPath/usr/lib/aarch64-linux-gnu/" /usr/lib/aarch64-linux-gnu/
+          
+          # Extract zlib1g-dev for arm64
+          $ZlibPath = & $ScriptPath -PackageName "zlib1g-dev" -Release $UbuntuRelease -Architecture "arm64"
+          sudo cp -R "$ZlibPath/usr/lib/aarch64-linux-gnu/" /usr/lib/aarch64-linux-gnu/
 
       - name: Clone LLVM ${{matrix.version}}
         uses: actions/checkout@v4
