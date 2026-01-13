@@ -1,0 +1,25 @@
+From 200357d3a6242b6dfed56930be0562f58aff9f9a Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marc-Andr=C3=A9=20Moreau?= <mamoreau@devolutions.net>
+Date: Sun, 16 Feb 2025 14:55:46 -0500
+Subject: [PATCH 3/3] disable clang verbose build warnings
+
+---
+ CMakeLists.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 287ec4496..5563f4a69 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -169,6 +169,8 @@ function(set_halide_compiler_warnings NAME)
+         $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-undefined-func-template>
+         $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-unused-member-function>
+         $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-unused-template>
++        $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-unknown-warning-option>
++        $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-unsafe-buffer-usage>
+ 
+         $<$<CXX_COMPILER_ID:MSVC>:/W3>
+         $<$<CXX_COMPILER_ID:MSVC>:/wd4018>  # 4018: disable "signed/unsigned mismatch"
+-- 
+2.34.1
+
