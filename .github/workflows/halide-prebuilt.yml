@@ -190,6 +190,7 @@ jobs:
             -DClang_DIR="$Env:CLANG_HOST_DIR" `
             -DWITH_TESTS=OFF -DWITH_UTILS=OFF `
             -DWITH_PYTHON_BINDINGS=OFF `
+            -DWITH_AUTOSCHEDULERS=OFF `
             -Wno-dev
 
           cmake --build halide-host --target build_halide_h binary2cpp regexp_replace
