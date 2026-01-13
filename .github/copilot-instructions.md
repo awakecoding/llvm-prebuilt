@@ -44,7 +44,7 @@ Toolchain files in [cmake/](../cmake/) follow a strict **include hierarchy**:
 
 ## Patch Management
 
-Patches in [patches/](../patches/) are **version-specific** (16.x vs 18.x) and must be applied before configuration:
+Patches in [patches/](../patches/) are **version-specific** (18.x vs 20.x) and must be applied before configuration:
 - **lld-install-targets**: Adds missing `install-lld-headers` and `install-lld-libraries` targets
 - **llvm-name-prefix**: Renames `llc`/`lli`/`opt` to avoid conflicts with system tools
 - **force-disable-clang-ast-introspection**: Disables feature causing cross-compilation issues
@@ -100,4 +100,4 @@ The [halide-prebuilt.yml](../.github/workflows/halide-prebuilt.yml) workflow:
 
 ## File Naming Conventions
 
-Artifacts follow pattern: `clang+llvm-<version>-<arch>-<os>.tar.xz` (e.g., `clang+llvm-16.0.6-aarch64-ubuntu-22.04.tar.xz`)
+Artifacts follow pattern: `clang+llvm-<version>-<arch>-<os>.tar.xz` (e.g., `clang+llvm-20.1.8-aarch64-ubuntu-22.04.tar.xz`)

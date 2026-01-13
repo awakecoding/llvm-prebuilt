@@ -1,0 +1,26 @@
+From 51ed947d7189a52bc0dd0f68b20c7fb201d2821c Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marc-Andr=C3=A9=20Moreau?= <mamoreau@devolutions.net>
+Date: Sun, 22 Jan 2023 08:01:56 -0500
+Subject: [PATCH 2/3] disable autoschedulers
+
+---
+ src/CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index f5eb3e6..d2f8ba7 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -705,5 +705,5 @@ endif ()
+ ##
+ 
+ if (WITH_AUTOSCHEDULERS)
+-    add_subdirectory(autoschedulers)
++    #add_subdirectory(autoschedulers) # disabled for cross-compilation
+ endif ()
+ 
+ ##
+ # Add PyTorch support
+-- 
+2.34.1
+
