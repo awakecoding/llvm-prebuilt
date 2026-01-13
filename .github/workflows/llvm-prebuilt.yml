@@ -127,7 +127,11 @@ jobs:
         shell: pwsh
         run: |
           cmake --build llvm-host --target llvm-tblgen clang-tblgen llvm-config
-          cmake --build llvm-host --target clang-tidy-confusable-chars-gen clang-pseudo-gen
+          if ('${{matrix.version}}' -eq '18.1.8') {
+            cmake --build llvm-host --target clang-tidy-confusable-chars-gen clang-pseudo-gen
+          } elseif ('${{matrix.version}}' -eq '20.1.8') {
+            cmake --build llvm-host --target clang-tidy-confusable-chars-gen
+          }
           $HostBinPath = "$Env:GITHUB_WORKSPACE/llvm-host/bin"
           $ExeExt = if ($IsWindows) { ".exe" } else { "" }
           echo "LLVM_NATIVE_TOOL_DIR=$HostBinPath" >> $Env:GITHUB_ENV
