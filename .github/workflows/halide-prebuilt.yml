@@ -48,9 +48,12 @@ jobs:
 
       - name: Configure macOS runner
         if: runner.os == 'macOS'
+        shell: pwsh
         run: |
           brew install ninja
-          echo "MACOSX_DEPLOYMENT_TARGET=10.13" >> $GITHUB_ENV
+          # Halide 19+ requires macOS 10.15+ for std::filesystem support
+          $DeploymentTarget = if ('${{matrix.version}}' -eq '19.0.0') { "10.15" } else { "10.13" }
+          echo "MACOSX_DEPLOYMENT_TARGET=$DeploymentTarget" >> $Env:GITHUB_ENV
 
       - name: Configure Linux runner
         if: runner.os == 'Linux'
