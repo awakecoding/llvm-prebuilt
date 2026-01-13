@@ -129,8 +129,12 @@ jobs:
           cmake --build llvm-host --target llvm-tblgen clang-tblgen llvm-config
           if ('${{matrix.version}}' -eq '18.1.8') {
             cmake --build llvm-host --target clang-tidy-confusable-chars-gen clang-pseudo-gen
+            # Build host tools needed for cross-compilation
+            cmake --build llvm-host --target llvm-nm llvm-readobj
           } elseif ('${{matrix.version}}' -eq '20.1.8') {
             cmake --build llvm-host --target clang-tidy-confusable-chars-gen
+            # Build host tools needed for cross-compilation in LLVM 20
+            cmake --build llvm-host --target llvm-as llvm-link llvm-nm llvm-readobj opt
           }
           $HostBinPath = "$Env:GITHUB_WORKSPACE/llvm-host/bin"
           $ExeExt = if ($IsWindows) { ".exe" } else { "" }
