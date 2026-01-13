@@ -1,7 +1,7 @@
-From 9c7165d0db53f0aef98090c3a5dd863fdd46a755 Mon Sep 17 00:00:00 2001
+From 64587365a9a5e3f2b7004b60d0863211bfc1f112 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Marc-Andr=C3=A9=20Moreau?= <mamoreau@devolutions.net>
 Date: Thu, 2 Nov 2023 10:12:14 -0400
-Subject: [PATCH] [PATCH] add llvm name prefix to llc,lli,opt tools
+Subject: [PATCH 2/3] add llvm name prefix to llc,lli,opt tools
 
 ---
  llvm/tools/CMakeLists.txt | 4 ++++
@@ -23,5 +23,5 @@ index c6116ac81d12..12c6b9a037ee 100644
    # This is explicitly added at the end _after_ all tool projects so that it can
    # scrape up tools from other projects into itself.
 -- 
-2.25.1
+2.34.1
 
