@@ -64,7 +64,7 @@ jobs:
       - name: Preflight
         shell: pwsh
         run: |
-          $LlvmVersion = if ('${{matrix.version}}' -eq '18.0.0') { "18.1.8" } else { "20.1.8" }
+          $LlvmVersion = "18.1.8"
           $LlvmRunId = '${{ github.event.inputs.run_id }}'
           if ($LlvmRunId -eq 'latest') {
             $LlvmRunId = $(gh run list -w 'LLVM prebuilt' --json 'status,databaseId,conclusion') |
