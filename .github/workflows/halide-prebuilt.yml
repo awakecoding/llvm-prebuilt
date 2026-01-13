@@ -221,6 +221,7 @@ jobs:
           $CMakeArgs += @("-DWITH_DOCS=OFF", "-DWITH_UTILS=OFF")
           $CMakeArgs += @("-DWITH_PYTHON_BINDINGS=OFF")
           $CMakeArgs += @("-DWITH_SERIALIZATION=OFF")
+          $CMakeArgs += @("-DWITH_AUTOSCHEDULERS=OFF")
           $CMakeArgs += @("-DTARGET_WEBASSEMBLY=ON")
           $CMakeArgs += @("-Wno-dev")
 
