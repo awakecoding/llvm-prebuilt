@@ -144,6 +144,19 @@ jobs:
           echo "LLVM_CONFIG_PATH=$HostBinPath/llvm-config$ExeExt" >> $Env:GITHUB_ENV
           echo "LLVM_VERSION=${{matrix.version}}" >> $Env:GITHUB_ENV
 
+      - name: Free disk space after host tools build
+        if: runner.os == 'Linux'
+        shell: pwsh
+        run: |
+          # Remove object files and build intermediates from host build, keep only binaries
+          Get-ChildItem -Path llvm-host -Recurse -Include *.o,*.a,*.cmake.d | Remove-Item -Force
+          # Clean up source build artifacts
+          if (Test-Path llvm-host/tools) {
+            Get-ChildItem -Path llvm-host/tools -Recurse -Include *.o,*.a | Remove-Item -Force
+          }
+          # Show disk usage
+          & df -h
+
       - name: Enable Windows target environment
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
