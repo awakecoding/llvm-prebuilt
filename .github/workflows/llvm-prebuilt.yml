@@ -148,12 +148,18 @@ jobs:
         if: runner.os == 'Linux'
         shell: pwsh
         run: |
-          # Remove object files and build intermediates from host build, keep only binaries
-          Get-ChildItem -Path llvm-host -Recurse -Include *.o,*.a,*.cmake.d | Remove-Item -Force
-          # Clean up source build artifacts
-          if (Test-Path llvm-host/tools) {
-            Get-ChildItem -Path llvm-host/tools -Recurse -Include *.o,*.a | Remove-Item -Force
-          }
+          # Copy binaries to a temp location
+          New-Item -ItemType Directory -Path llvm-host-tools -Force | Out-Null
+          Copy-Item -Path llvm-host/bin/* -Destination llvm-host-tools/ -Recurse -Force
+          
+          # Remove entire llvm-host build directory to free maximum space
+          Remove-Item -Path llvm-host -Recurse -Force
+          
+          # Restore just the bin directory
+          New-Item -ItemType Directory -Path llvm-host/bin -Force | Out-Null
+          Copy-Item -Path llvm-host-tools/* -Destination llvm-host/bin/ -Recurse -Force
+          Remove-Item -Path llvm-host-tools -Recurse -Force
+          
           # Show disk usage
           & df -h
 
