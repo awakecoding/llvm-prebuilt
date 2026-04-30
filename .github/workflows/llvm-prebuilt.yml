@@ -49,10 +49,10 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           choco install --no-progress ninja 7zip
-          git clone https://github.com/microsoft/vcpkg.git
+          git clone --depth 1 --branch 2025.10.17 https://github.com/microsoft/vcpkg.git
           cd vcpkg
           .\bootstrap-vcpkg.bat
-          $VcpkgRootDir = "$PWD/vcpkg" -Replace '\\','/'
+          $VcpkgRootDir = "$PWD" -Replace '\\','/'
           $VcpkgArch = @{'x86_64'='x64';'aarch64'='arm64'}['${{matrix.arch}}']
           .\vcpkg install "zlib:${VcpkgArch}-windows-static-release"
           .\vcpkg install "libxml2:${VcpkgArch}-windows-static-release"
