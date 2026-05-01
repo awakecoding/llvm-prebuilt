@@ -85,9 +85,12 @@ if (Get-Command apt-get -ErrorAction SilentlyContinue) {
     Push-Location $WorkDir
 
     try {
-        & apt-get download "$PackageName`:$Architecture"
-        if ($LASTEXITCODE -ne 0) {
-            throw "apt-get download failed with exit code $LASTEXITCODE"
+        $AptOutput = & apt-get download "$PackageName`:$Architecture" 2>&1
+        $AptExitCode = $LASTEXITCODE
+        $AptOutput | ForEach-Object { Write-Host $_ }
+
+        if ($AptExitCode -ne 0) {
+            throw "apt-get download failed with exit code $AptExitCode"
         }
 
         $DebPackage = Get-ChildItem -Filter "*.deb" | Select-Object -First 1
