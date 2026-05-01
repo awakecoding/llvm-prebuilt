@@ -74,7 +74,7 @@ function Expand-DebPackage {
     }
 }
 
-$WorkDir = Join-Path $ExtractPath "$PackageName-$Architecture"
+$WorkDir = [System.IO.Path]::GetFullPath((Join-Path $ExtractPath "$PackageName-$Architecture"))
 if (Test-Path $WorkDir) {
     Remove-Item -Recurse -Force $WorkDir
 }
