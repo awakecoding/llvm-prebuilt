@@ -71,15 +71,51 @@ jobs:
         run: |
           if ('${{matrix.arch}}' -eq 'aarch64') {
             sudo dpkg --add-architecture arm64
+
+            $UbuntuCodename = lsb_release -cs
+            $UbuntuSources = "/etc/apt/sources.list.d/ubuntu.sources"
+
+            if (Test-Path $UbuntuSources) {
+              $NativeSources = Get-Content $UbuntuSources -Raw
+
+              if ($NativeSources -notmatch '(?m)^Architectures:') {
+                $NativeSources = $NativeSources -replace '(?m)^Signed-By:', "Architectures: amd64`nSigned-By:"
+                $NativeSources | sudo tee $UbuntuSources | Out-Null
+              }
+            }
+
+            $LegacySources = "/etc/apt/sources.list"
+
+            if (Test-Path $LegacySources) {
+              sudo sed -i -E 's/^deb http/deb [arch=amd64] http/' $LegacySources
+            }
+
+            $Arm64Sources = @(
+              "Types: deb",
+              "URIs: http://ports.ubuntu.com/ubuntu-ports",
+              "Suites: $UbuntuCodename ${UbuntuCodename}-updates ${UbuntuCodename}-backports",
+              "Components: main restricted universe multiverse",
+              "Architectures: arm64",
+              "Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg",
+              "",
+              "Types: deb",
+              "URIs: http://ports.ubuntu.com/ubuntu-ports",
+              "Suites: ${UbuntuCodename}-security",
+              "Components: main restricted universe multiverse",
+              "Architectures: arm64",
+              "Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg"
+            ) -join "`n"
+
+            $Arm64Sources | sudo tee /etc/apt/sources.list.d/ubuntu-arm64.sources | Out-Null
           }
 
-          sudo apt update
-          sudo apt install zstd xz-utils
-          sudo apt install ninja-build
-          sudo apt install g++-aarch64-linux-gnu
+          sudo apt-get update
+          sudo apt-get install -y zstd xz-utils
+          sudo apt-get install -y ninja-build
+          sudo apt-get install -y g++-aarch64-linux-gnu
 
           # Install native packages
-          sudo apt install libxml2-dev zlib1g-dev
+          sudo apt-get install -y libxml2-dev zlib1g-dev
 
           if ('${{matrix.arch}}' -eq 'aarch64') {
             # Get Ubuntu release for cross-compilation packages
