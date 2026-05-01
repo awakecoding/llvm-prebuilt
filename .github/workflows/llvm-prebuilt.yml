@@ -69,6 +69,10 @@ jobs:
         if: runner.os == 'Linux'
         shell: pwsh
         run: |
+          if ('${{matrix.arch}}' -eq 'aarch64') {
+            sudo dpkg --add-architecture arm64
+          }
+
           sudo apt update
           sudo apt install zstd xz-utils
           sudo apt install ninja-build
@@ -77,19 +81,21 @@ jobs:
           # Install native packages
           sudo apt install libxml2-dev zlib1g-dev
 
-          # Get Ubuntu release for cross-compilation packages
-          $UbuntuRelease = lsb_release -rs
-          
-          # Download and extract arm64 packages using helper script
-          $ScriptPath = "$Env:GITHUB_WORKSPACE/llvm-prebuilt/scripts/Get-UbuntuPackage.ps1"
-          
-          # Extract libxml2-dev for arm64
-          $LibXmlPath = & $ScriptPath -PackageName "libxml2-dev" -Release $UbuntuRelease -Architecture "arm64"
-          sudo cp -R "$LibXmlPath/usr/lib/aarch64-linux-gnu/" /usr/lib/aarch64-linux-gnu/
-          
-          # Extract zlib1g-dev for arm64
-          $ZlibPath = & $ScriptPath -PackageName "zlib1g-dev" -Release $UbuntuRelease -Architecture "arm64"
-          sudo cp -R "$ZlibPath/usr/lib/aarch64-linux-gnu/" /usr/lib/aarch64-linux-gnu/
+          if ('${{matrix.arch}}' -eq 'aarch64') {
+            # Get Ubuntu release for cross-compilation packages
+            $UbuntuRelease = lsb_release -rs
+
+            # Download and extract arm64 packages using helper script
+            $ScriptPath = "$Env:GITHUB_WORKSPACE/llvm-prebuilt/scripts/Get-UbuntuPackage.ps1"
+
+            # Extract libxml2-dev for arm64
+            $LibXmlPath = & $ScriptPath -PackageName "libxml2-dev" -Release $UbuntuRelease -Architecture "arm64"
+            sudo cp -R "$LibXmlPath/usr/lib/aarch64-linux-gnu/" /usr/lib/aarch64-linux-gnu/
+
+            # Extract zlib1g-dev for arm64
+            $ZlibPath = & $ScriptPath -PackageName "zlib1g-dev" -Release $UbuntuRelease -Architecture "arm64"
+            sudo cp -R "$ZlibPath/usr/lib/aarch64-linux-gnu/" /usr/lib/aarch64-linux-gnu/
+          }
 
       - name: Clone LLVM ${{matrix.version}}
         uses: actions/checkout@v6

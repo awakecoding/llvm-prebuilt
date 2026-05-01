@@ -34,6 +34,80 @@ $Codename = if ($ReleaseCodenames.ContainsKey($Release)) {
 
 Write-Host "Resolving package: $PackageName for Ubuntu $Codename ($Architecture)" -ForegroundColor Cyan
 
+function Expand-DebPackage {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$DebFileName,
+
+        [Parameter(Mandatory=$true)]
+        [string]$WorkDir
+    )
+
+    Push-Location $WorkDir
+
+    try {
+        Write-Host "Extracting package..." -ForegroundColor Cyan
+        & ar -x $DebFileName
+
+        $DataArchive = Get-ChildItem -Filter "data.tar.*" | Select-Object -First 1
+
+        if (-not $DataArchive) {
+            Write-Error "Could not find data archive in $DebFileName"
+            exit 1
+        }
+
+        Write-Host "Extracting $($DataArchive.Name)..." -ForegroundColor Gray
+
+        if ($DataArchive.Name -match '\.zst$') {
+            $ZstdCmd = if (Get-Command zstd -ErrorAction SilentlyContinue) { "zstd -d" } else { "unzstd" }
+            & tar --use-compress-program="$ZstdCmd" -xf $DataArchive.Name
+        } elseif ($DataArchive.Name -match '\.xz$') {
+            & tar -xf $DataArchive.Name
+        } elseif ($DataArchive.Name -match '\.gz$') {
+            & tar -xzf $DataArchive.Name
+        } else {
+            Write-Error "Unknown compression format: $($DataArchive.Name)"
+            exit 1
+        }
+    } finally {
+        Pop-Location
+    }
+}
+
+$WorkDir = Join-Path $ExtractPath "$PackageName-$Architecture"
+if (Test-Path $WorkDir) {
+    Remove-Item -Recurse -Force $WorkDir
+}
+New-Item -ItemType Directory -Path $WorkDir | Out-Null
+
+if (Get-Command apt-get -ErrorAction SilentlyContinue) {
+    Write-Host "Downloading package with apt-get..." -ForegroundColor Cyan
+    Push-Location $WorkDir
+
+    try {
+        & apt-get download "$PackageName`:$Architecture"
+        if ($LASTEXITCODE -ne 0) {
+            throw "apt-get download failed with exit code $LASTEXITCODE"
+        }
+
+        $DebPackage = Get-ChildItem -Filter "*.deb" | Select-Object -First 1
+        if (-not $DebPackage) {
+            throw "apt-get download did not produce a .deb file"
+        }
+
+        Expand-DebPackage -DebFileName $DebPackage.Name -WorkDir $WorkDir
+        Write-Host "✓ Successfully extracted $PackageName to $WorkDir" -ForegroundColor Green
+        $WorkDir
+        exit 0
+    } catch {
+        Write-Host "apt-get download failed: $_" -ForegroundColor Yellow
+        Write-Host "Falling back to packages.ubuntu.com..." -ForegroundColor Yellow
+        Get-ChildItem -Force | Remove-Item -Recurse -Force
+    } finally {
+        Pop-Location
+    }
+}
+
 # Construct packages.ubuntu.com URL
 $PackageUrl = "https://packages.ubuntu.com/$Codename/$Architecture/$PackageName/download"
 
@@ -81,12 +155,6 @@ try {
     Write-Host "Found package: $DebFileName" -ForegroundColor Green
     Write-Host "Download URL: $DebUrl" -ForegroundColor Gray
     
-    # Create working directory
-    $WorkDir = Join-Path $ExtractPath "$PackageName-$Architecture"
-    if (Test-Path $WorkDir) {
-        Remove-Item -Recurse -Force $WorkDir
-    }
-    New-Item -ItemType Directory -Path $WorkDir | Out-Null
     Push-Location $WorkDir
     
     try {
@@ -94,34 +162,7 @@ try {
         Write-Host "Downloading $DebFileName..." -ForegroundColor Cyan
         Invoke-WebRequest -Uri $DebUrl -OutFile $DebFileName -UseBasicParsing
         
-        # Extract the .deb archive
-        Write-Host "Extracting package..." -ForegroundColor Cyan
-        
-        # Extract ar archive
-        & ar -x $DebFileName
-        
-        # Find and extract data archive (could be .tar.zst, .tar.xz, or .tar.gz)
-        $DataArchive = Get-ChildItem -Filter "data.tar.*" | Select-Object -First 1
-        
-        if (-not $DataArchive) {
-            Write-Error "Could not find data archive in $DebFileName"
-            exit 1
-        }
-        
-        Write-Host "Extracting $($DataArchive.Name)..." -ForegroundColor Gray
-        
-        if ($DataArchive.Name -match '\.zst$') {
-            # Try zstd -d first, fall back to unzstd
-            $ZstdCmd = if (Get-Command zstd -ErrorAction SilentlyContinue) { "zstd -d" } else { "unzstd" }
-            & tar --use-compress-program="$ZstdCmd" -xf $DataArchive.Name
-        } elseif ($DataArchive.Name -match '\.xz$') {
-            & tar -xf $DataArchive.Name
-        } elseif ($DataArchive.Name -match '\.gz$') {
-            & tar -xzf $DataArchive.Name
-        } else {
-            Write-Error "Unknown compression format: $($DataArchive.Name)"
-            exit 1
-        }
+        Expand-DebPackage -DebFileName $DebFileName -WorkDir $WorkDir
         
         Write-Host "✓ Successfully extracted $PackageName to $WorkDir" -ForegroundColor Green
         
