@@ -1,1 +1,31 @@
-.idea
+.idea/
+
+# Upstream source checkouts and build trees
+llvm-project/
+llvm-host/
+llvm-build/
+llvm-install/
+llvm-host-tools/
+halide/
+halide-host/
+halide-build/
+halide-install/
+xar/
+apple-libtapi/
+apple-libdispatch/
+cctools-port/
+
+# Packaged artifacts and extracted bundles
+clang+llvm-*/
+halide-*/
+cctools-*/
+xcode-bundle/
+vctools/
+winsdk/
+*.tar
+*.tar.xz
+
+# Ubuntu package extraction output
+*.deb
+libxml2-dev-*/
+zlib1g-dev-*/

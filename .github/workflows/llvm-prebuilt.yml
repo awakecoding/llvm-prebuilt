@@ -2,7 +2,7 @@ name: LLVM prebuilt
 on: workflow_dispatch
 jobs:
   build:
-    name: LLVM ${{matrix.version}} [${{matrix.arch}}-${{matrix.os}}] ${{matrix.distro}}
+    name: LLVM ${{matrix.version}} [${{matrix.arch}}-${{matrix.os}}]
     runs-on: ${{matrix.runner}}
     strategy:
       fail-fast: false
@@ -41,7 +41,7 @@ jobs:
             osx_arch: arm64
     steps:
       - name: Clone project
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: llvm-prebuilt
 
@@ -49,10 +49,10 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           choco install --no-progress ninja 7zip
-          git clone https://github.com/microsoft/vcpkg.git
+          git clone --depth 1 --branch 2025.10.17 https://github.com/microsoft/vcpkg.git
           cd vcpkg
           .\bootstrap-vcpkg.bat
-          $VcpkgRootDir = "$PWD/vcpkg" -Replace '\\','/'
+          $VcpkgRootDir = "$PWD" -Replace '\\','/'
           $VcpkgArch = @{'x86_64'='x64';'aarch64'='arm64'}['${{matrix.arch}}']
           .\vcpkg install "zlib:${VcpkgArch}-windows-static-release"
           .\vcpkg install "libxml2:${VcpkgArch}-windows-static-release"
@@ -92,7 +92,7 @@ jobs:
           sudo cp -R "$ZlibPath/usr/lib/aarch64-linux-gnu/" /usr/lib/aarch64-linux-gnu/
 
       - name: Clone LLVM ${{matrix.version}}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: llvm/llvm-project
           ref: ${{matrix.branch}}
@@ -225,7 +225,7 @@ jobs:
           cmd.exe /c "7z a -ttar -snl -so clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}} | 7z a -si clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz"
 
       - name: Upload LLVM package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
           path: clang+llvm-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz

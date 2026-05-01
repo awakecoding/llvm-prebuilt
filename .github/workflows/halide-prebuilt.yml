@@ -36,9 +36,9 @@ jobs:
   
     steps:
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.9'
+          python-version: '3.12'
 
       - name: Configure Windows runner
         if: runner.os == 'Windows'
@@ -68,9 +68,9 @@ jobs:
         shell: pwsh
         run: |
           $LlvmVersion = "18.1.8"
-          $LlvmRunId = '${{ github.event.inputs.run_id }}'
+          $LlvmRunId = '${{ github.event.inputs.llvm_run_id }}'
           if ($LlvmRunId -eq 'latest') {
-            $LlvmRunId = $(gh run list -w 'LLVM prebuilt' --json 'status,databaseId,conclusion') |
+            $LlvmRunId = $(gh run list -R $Env:GITHUB_REPOSITORY -w 'LLVM prebuilt' --json 'status,databaseId,conclusion') |
               ConvertFrom-Json | Where-Object { ($_.status -eq 'completed') -and ($_.conclusion -eq 'success') } |
               Select-Object -First 1 -ExpandProperty databaseId
           }
@@ -152,12 +152,12 @@ jobs:
           }
 
       - name: Clone project
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: llvm-prebuilt
 
       - name: Clone Halide ${{matrix.version}}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: halide/Halide
           ref: v${{matrix.version}}
@@ -264,7 +264,7 @@ jobs:
           }
 
       - name: Upload Halide package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: halide-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
           path: halide-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz
