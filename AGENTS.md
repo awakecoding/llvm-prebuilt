@@ -8,8 +8,8 @@ Treat this as a packaging and cross-compilation repository. Keep changes small, 
 
 - Architectures: `x86_64`, `aarch64`
 - Platforms: `windows`, `macos`, `ubuntu-22.04`, `ubuntu-24.04`
-- LLVM versions currently built by CI: `18.1.8`, `20.1.8`
-- Halide versions currently built by CI: `18.0.0`, `19.0.0`
+- LLVM versions currently built by CI: `20.1.8`, `22.1.4`
+- Halide versions currently built by CI: `19.0.0`, `20.0.0.dev0`
 
 ## Repository Layout
 
@@ -47,8 +47,12 @@ Prefer PowerShell-compatible commands because the workflows use `pwsh` heavily a
 Patch application smoke test:
 
 ```powershell
+# LLVM 20 checkout
 git -C llvm-project apply ../llvm-prebuilt/patches/llvm-20-add-lld-install-targets.patch
 git -C llvm-project apply ../llvm-prebuilt/patches/llvm-20-add-llvm-name-prefix-to-llc-lli-opt-tools.patch
+
+# LLVM 22 checkout
+git -C llvm-project apply ../llvm-prebuilt/patches/llvm-22-add-llvm-name-prefix-to-llc-lli-opt-tools.patch
 ```
 
 LLVM host tools:
@@ -106,8 +110,8 @@ The `llc`, `lli`, and `opt` tools are patched to install as `llvm-llc`, `llvm-ll
 - Apply patches after checking out upstream `llvm/llvm-project` or `halide/Halide`, before CMake configuration.
 - Keep LLVM patch conditionals in `.github/workflows/llvm-prebuilt.yml` in sync with files under `patches/llvm-*`.
 - Keep Halide patch conditionals in `.github/workflows/halide-prebuilt.yml` in sync with files under `patches/halide-*`.
-- When updating LLVM, verify all patch categories: lld install targets, LLVM tool name prefixes, and any cross-compilation feature disables still needed for that version.
-- When updating Halide, verify all patch categories: host tools directory option, autoscheduler disablement, and verbose warning suppression.
+- When updating LLVM, verify all patch categories: lld install targets when still needed by that version, LLVM tool name prefixes, and any cross-compilation feature disables still needed for that version.
+- When updating Halide, verify all patch categories: host tools directory option, autoscheduler disablement, verbose warning suppression, and LLVM compatibility range adjustments.
 
 ## Linux Dependency Handling
 

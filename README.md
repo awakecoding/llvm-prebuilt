@@ -10,7 +10,7 @@ You can download published packages from the [GitHub releases page](https://gith
 
 The LLVM workflow builds minimal installable Clang/LLVM distributions with Clang, LLD, selected LLVM tools, development headers, CMake exports, zlib, and libxml2 support.
 
-Currently built LLVM versions: `18.1.8`, `20.1.8`.
+Currently built LLVM versions: `20.1.8`, `22.1.4`.
 
 | Arch    | Windows | macOS | Ubuntu 22.04 | Ubuntu 24.04 |
 |---------|---------|-------|--------------|--------------|
@@ -27,7 +27,7 @@ clang+llvm-<version>-<arch>-<os>.tar.xz
 
 The Halide workflow builds Halide packages against LLVM artifacts produced by the LLVM workflow. It first installs a host LLVM package, then installs a target LLVM package when cross-compiling for `aarch64`.
 
-Currently built Halide versions: `18.0.0`, `19.0.0`.
+Currently built Halide versions: `19.0.0`, `20.0.0.dev0`.
 
 | Arch    | Windows | macOS | Ubuntu 22.04 | Ubuntu 24.04 |
 |---------|---------|-------|--------------|--------------|

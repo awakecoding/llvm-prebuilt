@@ -15,7 +15,7 @@ jobs:
       matrix:
         arch: [ x86_64, aarch64 ]
         os: [ windows, macos, ubuntu-22.04, ubuntu-24.04 ]
-        version: [ 18.0.0, 19.0.0 ]
+        version: [ 19.0.0, 20.0.0.dev0 ]
 
         include:
           - os: windows
@@ -52,8 +52,7 @@ jobs:
         run: |
           brew install ninja
           # Halide 19+ requires macOS 10.15+ for std::filesystem support
-          $DeploymentTarget = if ('${{matrix.version}}' -eq '19.0.0') { "10.15" } else { "10.13" }
-          echo "MACOSX_DEPLOYMENT_TARGET=$DeploymentTarget" >> $Env:GITHUB_ENV
+          echo "MACOSX_DEPLOYMENT_TARGET=10.15" >> $Env:GITHUB_ENV
 
       - name: Configure Linux runner
         if: runner.os == 'Linux'
@@ -67,7 +66,7 @@ jobs:
       - name: Preflight
         shell: pwsh
         run: |
-          $LlvmVersion = "18.1.8"
+          $LlvmVersion = "20.1.8"
           $LlvmRunId = '${{ github.event.inputs.llvm_run_id }}'
           if ($LlvmRunId -eq 'latest') {
             $LlvmRunId = $(gh run list -R $Env:GITHUB_REPOSITORY -w 'LLVM prebuilt' --json 'status,databaseId,conclusion') |
@@ -166,14 +165,16 @@ jobs:
       - name: Patch Halide
         shell: pwsh
         run: |
-          if ('${{matrix.version}}' -eq '18.0.0') {
-            git -C halide apply ../llvm-prebuilt/patches/halide-18-add-halide-host-tools-dir-cmake-option.patch
-            git -C halide apply ../llvm-prebuilt/patches/halide-18-disable-autoschedulers.patch
-            git -C halide apply ../llvm-prebuilt/patches/halide-18-disable-clang-verbose-build-warnings.patch
-          } elseif ('${{matrix.version}}' -eq '19.0.0') {
+          if ('${{matrix.version}}' -eq '19.0.0') {
             git -C halide apply ../llvm-prebuilt/patches/halide-19-add-halide-host-tools-dir-cmake-option.patch
             git -C halide apply ../llvm-prebuilt/patches/halide-19-disable-autoschedulers.patch
             git -C halide apply ../llvm-prebuilt/patches/halide-19-disable-clang-verbose-build-warnings.patch
+            git -C halide apply ../llvm-prebuilt/patches/halide-19-allow-llvm-20-point-releases.patch
+          } elseif ('${{matrix.version}}' -eq '20.0.0.dev0') {
+            git -C halide apply ../llvm-prebuilt/patches/halide-20-add-halide-host-tools-dir-cmake-option.patch
+            git -C halide apply ../llvm-prebuilt/patches/halide-20-disable-autoschedulers.patch
+            git -C halide apply ../llvm-prebuilt/patches/halide-20-disable-clang-verbose-build-warnings.patch
+            git -C halide apply ../llvm-prebuilt/patches/halide-20-allow-llvm-20-point-releases.patch
           }
 
       - name: Build Halide host tools

@@ -1,17 +1,17 @@
-From 64587365a9a5e3f2b7004b60d0863211bfc1f112 Mon Sep 17 00:00:00 2001
+From 71ed296a76832517fc695fb42c626eb89b9bfd7c Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Marc-Andr=C3=A9=20Moreau?= <mamoreau@devolutions.net>
-Date: Thu, 2 Nov 2023 10:12:14 -0400
-Subject: [PATCH 2/3] add llvm name prefix to llc,lli,opt tools
+Date: Fri, 1 May 2026 09:24:29 -0400
+Subject: [PATCH] add llvm name prefix to llc,lli,opt tools
 
 ---
  llvm/tools/CMakeLists.txt | 4 ++++
  1 file changed, 4 insertions(+)
 
 diff --git a/llvm/tools/CMakeLists.txt b/llvm/tools/CMakeLists.txt
-index c6116ac81d12..12c6b9a037ee 100644
+index 729797aa4..aa65698f5 100644
 --- a/llvm/tools/CMakeLists.txt
 +++ b/llvm/tools/CMakeLists.txt
-@@ -58,6 +58,10 @@ endforeach(p)
+@@ -67,6 +67,10 @@ endforeach(p)
  
  set(LLVM_COMMON_DEPENDS ${LLVM_COMMON_DEPENDS} PARENT_SCOPE)
  
@@ -23,5 +23,5 @@ index c6116ac81d12..12c6b9a037ee 100644
    # This is explicitly added at the end _after_ all tool projects so that it can
    # scrape up tools from other projects into itself.
 -- 
-2.34.1
+2.54.0.windows.1
 
