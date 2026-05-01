@@ -87,7 +87,7 @@ jobs:
             $LegacySources = "/etc/apt/sources.list"
 
             if (Test-Path $LegacySources) {
-              sudo sed -i -E 's/^deb http/deb [arch=amd64] http/' $LegacySources
+              sudo sed -i -E 's/^deb (https?:\/\/)/deb [arch=amd64] \1/' $LegacySources
             }
 
             $Arm64Sources = @(
