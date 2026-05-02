@@ -201,7 +201,7 @@ jobs:
           $CMakeArgs = @()
 
           if ('${{matrix.os}}' -eq 'windows') {
-            $ZLIB_ROOT_DIR="${Env:VCPKG_ROOT_DIR}/packages/zlib_${Env:VCPKG_ARCH}-windows-static"
+            $ZLIB_ROOT_DIR="${Env:VCPKG_ROOT_DIR}/packages/zlib_${Env:VCPKG_ARCH}-windows-static-release"
             $ZLIB_INCLUDE_DIR="$ZLIB_ROOT_DIR/include"
             $ZLIB_LIBRARY="$ZLIB_ROOT_DIR/lib/zlib.lib"
             $CMakeArgs += @(
@@ -211,7 +211,7 @@ jobs:
               "-DZLIB_LIBRARY_RELEASE=$ZLIB_LIBRARY"
             )
 
-            $LIBXML2_ROOT_DIR="${Env:VCPKG_ROOT_DIR}/packages/libxml2_${Env:VCPKG_ARCH}-windows-static"
+            $LIBXML2_ROOT_DIR="${Env:VCPKG_ROOT_DIR}/packages/libxml2_${Env:VCPKG_ARCH}-windows-static-release"
             $LIBXML2_INCLUDE_DIR="$LIBXML2_ROOT_DIR/include"
             $LIBXML2_LIBRARY="$LIBXML2_ROOT_DIR/lib/libxml2.lib"
             $CMakeArgs += @(
