@@ -247,7 +247,7 @@ jobs:
             "-DWITH_UTILS=OFF",
             "-DWITH_PYTHON_BINDINGS=OFF",
             "-DWITH_AUTOSCHEDULERS=OFF",
-            "-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=$Env:GITHUB_WORKSPACE/llvm-prebuilt/cmake/llvm-package-dependencies.cmake",
+            "-DCMAKE_PROJECT_INCLUDE=$Env:GITHUB_WORKSPACE/llvm-prebuilt/cmake/llvm-package-dependencies.cmake",
             "-Wno-dev"
           )
 
@@ -313,7 +313,7 @@ jobs:
           $CMakeArgs += @("-DWITH_SERIALIZATION=OFF")
           $CMakeArgs += @("-DWITH_AUTOSCHEDULERS=OFF")
           $CMakeArgs += @("-DTARGET_WEBASSEMBLY=ON")
-          $CMakeArgs += @("-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=$Env:GITHUB_WORKSPACE/llvm-prebuilt/cmake/llvm-package-dependencies.cmake")
+          $CMakeArgs += @("-DCMAKE_PROJECT_INCLUDE=$Env:GITHUB_WORKSPACE/llvm-prebuilt/cmake/llvm-package-dependencies.cmake")
           $CMakeArgs += @("-Wno-dev")
 
           if ($IsWindows) {
