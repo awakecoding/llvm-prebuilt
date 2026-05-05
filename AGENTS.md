@@ -9,7 +9,7 @@ Treat this as a packaging and cross-compilation repository. Keep changes small, 
 - Architectures: `x86_64`, `aarch64`
 - Platforms: `windows`, `macos`, `ubuntu-22.04`, `ubuntu-24.04`
 - LLVM versions currently built by CI: `20.1.8`, `22.1.4`
-- Halide versions currently built by CI: `19.0.0`, `20.0.0.dev0`
+- Halide versions currently built by CI: `19.0.0`, `21.0.0`
 
 ## Repository Layout
 

@@ -15,7 +15,7 @@ jobs:
       matrix:
         arch: [ x86_64, aarch64 ]
         os: [ windows, macos, ubuntu-22.04, ubuntu-24.04 ]
-        version: [ 19.0.0, 20.0.0.dev0 ]
+        version: [ 19.0.0, 21.0.0 ]
 
         include:
           - os: windows
@@ -170,11 +170,10 @@ jobs:
             git -C halide apply ../llvm-prebuilt/patches/halide-19-disable-autoschedulers.patch
             git -C halide apply ../llvm-prebuilt/patches/halide-19-disable-clang-verbose-build-warnings.patch
             git -C halide apply ../llvm-prebuilt/patches/halide-19-allow-llvm-20-point-releases.patch
-          } elseif ('${{matrix.version}}' -eq '20.0.0.dev0') {
-            git -C halide apply ../llvm-prebuilt/patches/halide-20-add-halide-host-tools-dir-cmake-option.patch
-            git -C halide apply ../llvm-prebuilt/patches/halide-20-disable-autoschedulers.patch
-            git -C halide apply ../llvm-prebuilt/patches/halide-20-disable-clang-verbose-build-warnings.patch
-            git -C halide apply ../llvm-prebuilt/patches/halide-20-allow-llvm-20-point-releases.patch
+          } elseif ('${{matrix.version}}' -eq '21.0.0') {
+            git -C halide apply ../llvm-prebuilt/patches/halide-21-add-halide-host-tools-dir-cmake-option.patch
+            git -C halide apply ../llvm-prebuilt/patches/halide-21-disable-autoschedulers.patch
+            git -C halide apply ../llvm-prebuilt/patches/halide-21-disable-clang-verbose-build-warnings.patch
           }
 
       - name: Build Halide host tools
