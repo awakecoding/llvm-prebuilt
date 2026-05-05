@@ -45,6 +45,23 @@ jobs:
         run: |
           choco install ninja 7zip wget
           Install-Module -Name VsDevShell -Force
+          git clone --depth 1 --branch 2025.10.17 https://github.com/microsoft/vcpkg.git
+          cd vcpkg
+          .\bootstrap-vcpkg.bat
+          $VcpkgRootDir = "$PWD" -Replace '\\','/'
+          $VcpkgTargetArch = @{'x86_64'='x64';'aarch64'='arm64'}['${{matrix.arch}}']
+
+          .\vcpkg install "zlib:x64-windows-static-release"
+          .\vcpkg install "libxml2[core]:x64-windows-static-release"
+
+          if ($VcpkgTargetArch -ne 'x64') {
+            .\vcpkg install "zlib:${VcpkgTargetArch}-windows-static-release"
+            .\vcpkg install "libxml2[core]:${VcpkgTargetArch}-windows-static-release"
+          }
+
+          echo "VCPKG_HOST_ARCH=x64" >> $Env:GITHUB_ENV
+          echo "VCPKG_TARGET_ARCH=$VcpkgTargetArch" >> $Env:GITHUB_ENV
+          echo "VCPKG_ROOT_DIR=$VcpkgRootDir" >> $Env:GITHUB_ENV
 
       - name: Configure macOS runner
         if: runner.os == 'macOS'
@@ -58,10 +75,55 @@ jobs:
         if: runner.os == 'Linux'
         shell: pwsh
         run: |
-          sudo apt update
-          sudo apt install zstd xz-utils
-          sudo apt install ninja-build
-          sudo apt install g++-aarch64-linux-gnu
+          if ('${{matrix.arch}}' -eq 'aarch64') {
+            sudo dpkg --add-architecture arm64
+
+            $UbuntuCodename = lsb_release -cs
+            $UbuntuSources = "/etc/apt/sources.list.d/ubuntu.sources"
+
+            if (Test-Path $UbuntuSources) {
+              $NativeSources = Get-Content $UbuntuSources -Raw
+
+              if ($NativeSources -notmatch '(?m)^Architectures:') {
+                $NativeSources = $NativeSources -replace '(?m)^Signed-By:', "Architectures: amd64`nSigned-By:"
+                $NativeSources | sudo tee $UbuntuSources | Out-Null
+              }
+            }
+
+            $LegacySources = "/etc/apt/sources.list"
+
+            if (Test-Path $LegacySources) {
+              sudo sed -i -E 's/^deb( \[[^]]+\])? /deb [arch=amd64] /' $LegacySources
+            }
+
+            $Arm64Sources = @(
+              "Types: deb",
+              "URIs: http://ports.ubuntu.com/ubuntu-ports",
+              "Suites: $UbuntuCodename ${UbuntuCodename}-updates ${UbuntuCodename}-backports",
+              "Components: main restricted universe multiverse",
+              "Architectures: arm64",
+              "Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg",
+              "",
+              "Types: deb",
+              "URIs: http://ports.ubuntu.com/ubuntu-ports",
+              "Suites: ${UbuntuCodename}-security",
+              "Components: main restricted universe multiverse",
+              "Architectures: arm64",
+              "Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg"
+            ) -join "`n"
+
+            $Arm64Sources | sudo tee /etc/apt/sources.list.d/ubuntu-arm64.sources | Out-Null
+          }
+
+          sudo apt-get update
+          sudo apt-get install -y zstd xz-utils
+          sudo apt-get install -y ninja-build
+          sudo apt-get install -y g++-aarch64-linux-gnu
+          sudo apt-get install -y libxml2-dev zlib1g-dev
+
+          if ('${{matrix.arch}}' -eq 'aarch64') {
+            sudo apt-get install -y libxml2-dev:arm64 zlib1g-dev:arm64
+          }
 
       - name: Preflight
         shell: pwsh
@@ -179,22 +241,46 @@ jobs:
       - name: Build Halide host tools
         shell: pwsh
         run: |
+          $CMakeArgs = @(
+            "-DCMAKE_BUILD_TYPE=Release",
+            "-DWITH_TESTS=OFF",
+            "-DWITH_UTILS=OFF",
+            "-DWITH_PYTHON_BINDINGS=OFF",
+            "-DWITH_AUTOSCHEDULERS=OFF",
+            "-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=$Env:GITHUB_WORKSPACE/llvm-prebuilt/cmake/llvm-package-dependencies.cmake",
+            "-Wno-dev"
+          )
+
           if ($IsWindows) {
             Enter-VsDevShell x64
             $CMAKE_MT = (Get-Command -Type Application mt).Source
             $CMAKE_MT = cmd /c "for %A in (`"$CMAKE_MT`") do @echo %~sA" 2>&1 | Out-String
             $CMAKE_MT = ($CMAKE_MT -Replace '\r|\n', '' -Replace '\\', '/').Trim()
             echo "CMAKE_MT=$CMAKE_MT" >> $Env:GITHUB_ENV
+
+            $ZLIB_ROOT_DIR="${Env:VCPKG_ROOT_DIR}/packages/zlib_${Env:VCPKG_HOST_ARCH}-windows-static-release"
+            $ZLIB_INCLUDE_DIR="$ZLIB_ROOT_DIR/include"
+            $ZLIB_LIBRARY="$ZLIB_ROOT_DIR/lib/zlib.lib"
+
+            $LIBXML2_ROOT_DIR="${Env:VCPKG_ROOT_DIR}/packages/libxml2_${Env:VCPKG_HOST_ARCH}-windows-static-release"
+            $LIBXML2_INCLUDE_DIR="$LIBXML2_ROOT_DIR/include/libxml2"
+            $LIBXML2_LIBRARY="$LIBXML2_ROOT_DIR/lib/libxml2.lib"
+
+            $CMakeArgs += @(
+              "-DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON",
+              "-DLibXml2_DIR=$LIBXML2_ROOT_DIR/share/libxml2",
+              "-DZLIB_INCLUDE_DIR=$ZLIB_INCLUDE_DIR",
+              "-DZLIB_LIBRARY=$ZLIB_LIBRARY",
+              "-DZLIB_LIBRARY_RELEASE=$ZLIB_LIBRARY",
+              "-DLIBXML2_INCLUDE_DIR=$LIBXML2_INCLUDE_DIR",
+              "-DLIBXML2_LIBRARY=$LIBXML2_LIBRARY",
+              "-DLIBXML2_DEFINITIONS=-DLIBXML_STATIC"
+            )
           }
 
-          cmake -G Ninja -S halide -B halide-host `
-            -DCMAKE_BUILD_TYPE=Release `
+          cmake -G Ninja -S halide -B halide-host $CMakeArgs `
             -DLLVM_DIR="$Env:LLVM_HOST_DIR" `
-            -DClang_DIR="$Env:CLANG_HOST_DIR" `
-            -DWITH_TESTS=OFF -DWITH_UTILS=OFF `
-            -DWITH_PYTHON_BINDINGS=OFF `
-            -DWITH_AUTOSCHEDULERS=OFF `
-            -Wno-dev
+            -DClang_DIR="$Env:CLANG_HOST_DIR"
 
           cmake --build halide-host --target build_halide_h binary2cpp regexp_replace
 
@@ -227,10 +313,39 @@ jobs:
           $CMakeArgs += @("-DWITH_SERIALIZATION=OFF")
           $CMakeArgs += @("-DWITH_AUTOSCHEDULERS=OFF")
           $CMakeArgs += @("-DTARGET_WEBASSEMBLY=ON")
+          $CMakeArgs += @("-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=$Env:GITHUB_WORKSPACE/llvm-prebuilt/cmake/llvm-package-dependencies.cmake")
           $CMakeArgs += @("-Wno-dev")
 
           if ($IsWindows) {
             $CMakeArgs += @("-DCMAKE_MT=${Env:CMAKE_MT}")
+
+            $ZLIB_ROOT_DIR="${Env:VCPKG_ROOT_DIR}/packages/zlib_${Env:VCPKG_TARGET_ARCH}-windows-static-release"
+            $ZLIB_INCLUDE_DIR="$ZLIB_ROOT_DIR/include"
+            $ZLIB_LIBRARY="$ZLIB_ROOT_DIR/lib/zlib.lib"
+
+            $LIBXML2_ROOT_DIR="${Env:VCPKG_ROOT_DIR}/packages/libxml2_${Env:VCPKG_TARGET_ARCH}-windows-static-release"
+            $LIBXML2_INCLUDE_DIR="$LIBXML2_ROOT_DIR/include/libxml2"
+            $LIBXML2_LIBRARY="$LIBXML2_ROOT_DIR/lib/libxml2.lib"
+
+            $CMakeArgs += @(
+              "-DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON",
+              "-DLibXml2_DIR=$LIBXML2_ROOT_DIR/share/libxml2",
+              "-DZLIB_INCLUDE_DIR=$ZLIB_INCLUDE_DIR",
+              "-DZLIB_LIBRARY=$ZLIB_LIBRARY",
+              "-DZLIB_LIBRARY_RELEASE=$ZLIB_LIBRARY",
+              "-DLIBXML2_INCLUDE_DIR=$LIBXML2_INCLUDE_DIR",
+              "-DLIBXML2_LIBRARY=$LIBXML2_LIBRARY",
+              "-DLIBXML2_DEFINITIONS=-DLIBXML_STATIC"
+            )
+          }
+
+          if ('${{matrix.os}}' -like 'ubuntu-*' -and '${{matrix.arch}}' -eq 'aarch64') {
+            $CMakeArgs += @(
+              "-DZLIB_INCLUDE_DIR=/usr/include",
+              "-DZLIB_LIBRARY=/usr/lib/aarch64-linux-gnu/libz.so",
+              "-DLIBXML2_INCLUDE_DIR=/usr/include/libxml2",
+              "-DLIBXML2_LIBRARY=/usr/lib/aarch64-linux-gnu/libxml2.so"
+            )
           }
 
           if ('${{matrix.os}}' -eq 'macos') {
