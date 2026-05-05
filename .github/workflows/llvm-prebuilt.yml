@@ -212,9 +212,11 @@ jobs:
             )
 
             $LIBXML2_ROOT_DIR="${Env:VCPKG_ROOT_DIR}/packages/libxml2_${Env:VCPKG_ARCH}-windows-static-release"
-            $LIBXML2_INCLUDE_DIR="$LIBXML2_ROOT_DIR/include"
+            $LIBXML2_INCLUDE_DIR="$LIBXML2_ROOT_DIR/include/libxml2"
             $LIBXML2_LIBRARY="$LIBXML2_ROOT_DIR/lib/libxml2.lib"
             $CMakeArgs += @(
+              "-DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON",
+              "-DLibXml2_DIR=$LIBXML2_ROOT_DIR/share/libxml2",
               "-DLLVM_USE_STATIC_LIBXML2=ON",
               "-DLIBXML2_INCLUDE_DIR=$LIBXML2_INCLUDE_DIR",
               "-DLIBXML2_LIBRARY=$LIBXML2_LIBRARY",
