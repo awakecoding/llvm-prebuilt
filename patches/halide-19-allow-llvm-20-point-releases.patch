@@ -1,0 +1,25 @@
+From 0c0df21feb66fdbe1c44f2a0bac58e20667cc2f3 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marc-Andr=C3=A9=20Moreau?= <mamoreau@devolutions.net>
+Date: Fri, 1 May 2026 09:48:41 -0400
+Subject: [PATCH] allow LLVM 20 point releases
+
+---
+ CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index bfac7f1..160cc0e 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -195,7 +195,7 @@ option(THREADS_PREFER_PTHREAD_FLAG "When enabled, prefer to use the -pthread fla
+ find_package(Threads REQUIRED)
+ 
+ ## LLVM
+-find_package(Halide_LLVM 17...20 REQUIRED
++find_package(Halide_LLVM 17...<21 REQUIRED
+              COMPONENTS WebAssembly X86
+              OPTIONAL_COMPONENTS AArch64 ARM Hexagon NVPTX PowerPC RISCV)
+ 
+-- 
+2.54.0.windows.1
+

@@ -1,0 +1,22 @@
+From 952dcdb6b75e0e914a2ae840fb462b077f8ee6a5 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marc-Andr=C3=A9=20Moreau?= <mamoreau@devolutions.net>
+Date: Fri, 1 May 2026 09:45:25 -0400
+Subject: [PATCH 2/3] disable autoschedulers
+
+---
+ src/CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index af41932..5b6c053 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -698,5 +698,5 @@ endif ()
+ ##
+ 
+ if (WITH_AUTOSCHEDULERS)
+-    add_subdirectory(autoschedulers)
++    #add_subdirectory(autoschedulers) # disabled for cross-compilation
+ endif ()
+-- 
+2.54.0.windows.1
