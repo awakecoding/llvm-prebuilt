@@ -25,7 +25,7 @@ clang+llvm-<version>-<arch>-<os>.tar.xz
 
 ### LLVM core libs
 
-The LLVM core libs workflow builds small static and shared-library packages for linking against the LLVM Core and BitReader C APIs. Windows packages are produced for both MSVC CRT modes: static CRT (`/MT`) and dynamic CRT (`/MD`). Static Windows packages verify `LLVMCore.lib` contains the expected `RuntimeLibrary` directive and does not contain the opposite CRT directive; shared Windows packages use component DLLs plus import libraries and verify the packaged LLVM DLL dependencies match the selected CRT mode.
+The LLVM core libs workflow builds small static and shared-library packages for linking against the LLVM Core and BitReader C APIs. Windows packages are produced for both MSVC CRT modes: static CRT (`/MT`) and dynamic CRT (`/MD`). Static Windows packages verify `LLVMCore.lib` contains the expected `RuntimeLibrary` directive and does not contain the opposite CRT directive; shared Windows packages use `LLVM-C.dll` plus its import library and verify the packaged DLL dependencies match the selected CRT mode.
 
 Currently built LLVM core libs versions: `20.1.8`, `22.1.4`.
 

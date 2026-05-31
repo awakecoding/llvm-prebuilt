@@ -138,7 +138,7 @@ jobs:
       - name: Build LLVM host tools
         shell: pwsh
         run: |
-          cmake --build llvm-host --target llvm-tblgen llvm-config
+          cmake --build llvm-host --target llvm-tblgen llvm-config llvm-nm
           $HostBinPath = "$Env:GITHUB_WORKSPACE/llvm-host/bin"
           $ExeExt = if ($IsWindows) { ".exe" } else { "" }
           echo "LLVM_NATIVE_TOOL_DIR=$HostBinPath" >> $Env:GITHUB_ENV
@@ -161,7 +161,6 @@ jobs:
 
           $CMakeArgs = @(
             "-DLLVM_TARGETS_TO_BUILD=AArch64;X86",
-            "-DLLVM_BUILD_LLVM_C_DYLIB=OFF",
             "-DLLVM_ENABLE_LIBXML2=OFF",
             "-DLLVM_ENABLE_ZLIB=OFF",
             "-DLLVM_ENABLE_ZSTD=OFF"
@@ -181,16 +180,19 @@ jobs:
           if ('${{matrix.linkage}}' -eq 'shared') {
             if ('${{matrix.os}}' -eq 'windows') {
               $CMakeArgs += @(
-                "-DBUILD_SHARED_LIBS=ON",
+                "-DBUILD_SHARED_LIBS=OFF",
                 "-DLLVM_BUILD_LLVM_DYLIB=OFF",
                 "-DLLVM_LINK_LLVM_DYLIB=OFF",
-                "-DLLVM_DISTRIBUTION_COMPONENTS=$DevelopmentComponents;$StaticComponents"
+                "-DLLVM_BUILD_LLVM_C_DYLIB=ON",
+                "-DLLVM_DYLIB_COMPONENTS=core;bitreader",
+                "-DLLVM_DISTRIBUTION_COMPONENTS=$DevelopmentComponents;LLVM-C"
               )
             } elseif ('${{matrix.os}}' -eq 'macos') {
               $CMakeArgs += @(
                 "-DBUILD_SHARED_LIBS=OFF",
                 "-DLLVM_BUILD_LLVM_DYLIB=ON",
                 "-DLLVM_LINK_LLVM_DYLIB=ON",
+                "-DLLVM_BUILD_LLVM_C_DYLIB=OFF",
                 "-DLLVM_DYLIB_COMPONENTS=core;bitreader",
                 "-DLLVM_DISTRIBUTION_COMPONENTS=$DevelopmentComponents;LLVM",
                 "-DCMAKE_INSTALL_NAME_DIR=@rpath",
@@ -201,6 +203,7 @@ jobs:
                 "-DBUILD_SHARED_LIBS=OFF",
                 "-DLLVM_BUILD_LLVM_DYLIB=ON",
                 "-DLLVM_LINK_LLVM_DYLIB=ON",
+                "-DLLVM_BUILD_LLVM_C_DYLIB=OFF",
                 "-DLLVM_DYLIB_COMPONENTS=core;bitreader",
                 "-DLLVM_DISTRIBUTION_COMPONENTS=$DevelopmentComponents;LLVM",
                 '-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib'
@@ -211,6 +214,7 @@ jobs:
               "-DBUILD_SHARED_LIBS=OFF",
               "-DLLVM_BUILD_LLVM_DYLIB=OFF",
               "-DLLVM_LINK_LLVM_DYLIB=OFF",
+              "-DLLVM_BUILD_LLVM_C_DYLIB=OFF",
               "-DLLVM_DISTRIBUTION_COMPONENTS=$DevelopmentComponents;$StaticComponents"
             )
           }
@@ -264,10 +268,17 @@ jobs:
             }
           } else {
             if ($IsWindows) {
-              foreach ($RequiredLib in $RequiredLibs) {
-                Copy-Item -Path "llvm-install/bin/$RequiredLib.dll" -Destination $PackageBinDir -Force
-                Copy-Item -Path "llvm-install/lib/$RequiredLib.lib" -Destination $PackageLibDir -Force
+              $SharedLibraries = @(Get-ChildItem -Path llvm-install/bin -Filter "LLVM-C*.dll" -File)
+              if ($SharedLibraries.Count -eq 0) {
+                throw "No LLVM-C DLL was installed"
               }
+              Copy-Item -Path $SharedLibraries.FullName -Destination $PackageBinDir -Force
+
+              $ImportLibraries = @(Get-ChildItem -Path llvm-install/lib -Filter "LLVM-C*.lib" -File)
+              if ($ImportLibraries.Count -eq 0) {
+                throw "No LLVM-C import library was installed"
+              }
+              Copy-Item -Path $ImportLibraries.FullName -Destination $PackageLibDir -Force
             } elseif ($IsMacOS) {
               $SharedLibraries = @(Get-ChildItem -Path llvm-install/lib -Filter "libLLVM*.dylib" -File)
               if ($SharedLibraries.Count -eq 0) {
@@ -418,10 +429,17 @@ jobs:
             "LLVMDemangle"
           )
           $UsesAggregateSharedLibrary = ($Linkage -eq "shared" -and -not $IsWindows)
-          $ExpectedLlvmComponents = if ($UsesAggregateSharedLibrary) { @("LLVM") } else { $StaticLlvmComponents }
+          $UsesWindowsCDll = ($Linkage -eq "shared" -and $IsWindows)
+          $ExpectedLlvmComponents = if ($UsesAggregateSharedLibrary) {
+            @("LLVM")
+          } elseif ($UsesWindowsCDll) {
+            @("LLVM-C")
+          } else {
+            $StaticLlvmComponents
+          }
           $LinkCommand = if ($Linkage -eq "shared") { "--link-shared" } else { "--link-static" }
 
-          if ($CanRunTargetTools) {
+          if ($CanRunTargetTools -and -not $UsesWindowsCDll) {
             $LibTokens = @((& $LlvmConfig $LinkCommand --libs core bitreader) -split '\s+' | ForEach-Object { Convert-ToLlvmComponentName $_ })
             if ($LASTEXITCODE -ne 0) {
               throw "llvm-config $LinkCommand --libs core bitreader failed"
@@ -442,11 +460,9 @@ jobs:
             }
           } else {
             if ($IsWindows) {
-              foreach ($ExpectedComponent in $ExpectedLlvmComponents) {
-                foreach ($ExpectedSharedFile in @("bin/$ExpectedComponent.dll", "lib/$ExpectedComponent.lib")) {
-                  if (-not (Test-Path (Join-Path $PackageRoot $ExpectedSharedFile))) {
-                    throw "Package is missing '$ExpectedSharedFile'"
-                  }
+              foreach ($ExpectedSharedFile in @("bin/LLVM-C.dll", "lib/LLVM-C.lib")) {
+                if (-not (Test-Path (Join-Path $PackageRoot $ExpectedSharedFile))) {
+                  throw "Package is missing '$ExpectedSharedFile'"
                 }
               }
             } elseif ($IsMacOS) {
@@ -458,7 +474,9 @@ jobs:
             }
           }
 
-          if ($CanRunTargetTools) {
+          if ($UsesWindowsCDll) {
+            $ReportedSystemLibs = @()
+          } elseif ($CanRunTargetTools) {
             $SystemLibTokens = @((& $LlvmConfig $LinkCommand --system-libs core bitreader) -split '\s+' | ForEach-Object { Convert-ToSystemLibToken $_ })
             if ($LASTEXITCODE -ne 0) {
               throw "llvm-config $LinkCommand --system-libs core bitreader failed"
@@ -488,15 +506,19 @@ jobs:
           }
 
           if ($IsWindows) {
-            $ExpectedSystemLibs = @(
-              "advapi32.lib",
-              "ntdll.lib",
-              "ole32.lib",
-              "psapi.lib",
-              "shell32.lib",
-              "uuid.lib",
-              "ws2_32.lib"
-            )
+            $ExpectedSystemLibs = if ($UsesWindowsCDll) {
+              @()
+            } else {
+              @(
+                "advapi32.lib",
+                "ntdll.lib",
+                "ole32.lib",
+                "psapi.lib",
+                "shell32.lib",
+                "uuid.lib",
+                "ws2_32.lib"
+              )
+            }
             Compare-LibSet -Expected $ExpectedSystemLibs -Actual $ReportedSystemLibs -Label "System libs"
 
             if ($Linkage -eq "static") {
@@ -514,19 +536,31 @@ jobs:
                 throw "LLVMCore.lib contains ${{matrix.forbidden_runtime_directive}}"
               }
             } else {
-              $DumpbinOutput = & dumpbin /dependents (Join-Path $PackageRoot "bin/LLVMCore.dll")
+              $DumpbinOutput = & dumpbin /dependents (Join-Path $PackageRoot "bin/LLVM-C.dll")
               if ($LASTEXITCODE -ne 0) {
-                throw "dumpbin /dependents LLVMCore.dll failed"
+                throw "dumpbin /dependents LLVM-C.dll failed"
               }
 
               $DumpbinText = $DumpbinOutput -join "`n"
               $DynamicCrtPattern = 'VCRUNTIME|MSVCP|CONCRT'
               if ('${{matrix.crt}}' -eq 'md' -and $DumpbinText -notmatch $DynamicCrtPattern) {
-                throw "LLVMCore.dll does not appear to depend on the dynamic MSVC runtime"
+                throw "LLVM-C.dll does not appear to depend on the dynamic MSVC runtime"
               }
 
               if ('${{matrix.crt}}' -eq 'mt' -and $DumpbinText -match $DynamicCrtPattern) {
-                throw "LLVMCore.dll appears to depend on the dynamic MSVC runtime"
+                throw "LLVM-C.dll appears to depend on the dynamic MSVC runtime"
+              }
+
+              $ExportsOutput = & dumpbin /exports (Join-Path $PackageRoot "bin/LLVM-C.dll")
+              if ($LASTEXITCODE -ne 0) {
+                throw "dumpbin /exports LLVM-C.dll failed"
+              }
+
+              $ExportsText = $ExportsOutput -join "`n"
+              foreach ($ExpectedExport in @("LLVMContextCreate", "LLVMParseBitcode2")) {
+                if ($ExportsText -notmatch $ExpectedExport) {
+                  throw "LLVM-C.dll does not export $ExpectedExport"
+                }
               }
             }
           }
@@ -542,7 +576,7 @@ jobs:
             throw "Shared package does not contain a dynamic library"
           }
 
-          if ($Linkage -eq "shared" -and -not $IsWindows) {
+          if ($Linkage -eq "shared") {
             foreach ($StaticComponent in $StaticLlvmComponents) {
               $StaticComponentFile = if ($IsWindows) { "$StaticComponent.lib" } else { "lib$StaticComponent.a" }
               if (Test-Path (Join-Path $PackageLibDir $StaticComponentFile)) {
@@ -567,7 +601,11 @@ jobs:
           $ManifestLines.Add($LlvmConfigValidationLine)
           $ManifestLines.Add("")
           $ManifestLines.Add("Command:")
-          $ManifestLines.Add("  bin/llvm-config$ExeExt $LinkCommand --libs core bitreader")
+          if ($UsesWindowsCDll) {
+            $ManifestLines.Add("  link against lib/LLVM-C.lib and deploy bin/LLVM-C.dll")
+          } else {
+            $ManifestLines.Add("  bin/llvm-config$ExeExt $LinkCommand --libs core bitreader")
+          }
           $ManifestLines.Add("")
           $ManifestLines.Add("LLVM libs:")
           foreach ($ExpectedLlvmComponent in $ExpectedLlvmComponents) {
@@ -575,7 +613,11 @@ jobs:
           }
           $ManifestLines.Add("")
           $ManifestLines.Add("Command:")
-          $ManifestLines.Add("  bin/llvm-config$ExeExt $LinkCommand --system-libs core bitreader")
+          if ($UsesWindowsCDll) {
+            $ManifestLines.Add("  no additional system libraries are required when linking against the import library")
+          } else {
+            $ManifestLines.Add("  bin/llvm-config$ExeExt $LinkCommand --system-libs core bitreader")
+          }
           $ManifestLines.Add("")
           $ManifestLines.Add("System libs:")
           foreach ($ReportedSystemLib in ($ReportedSystemLibs | Sort-Object)) {
