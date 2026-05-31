@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - llvm-core-package
+      - mamoreau-devolutions/llvm-core-package
     paths:
       - ".github/workflows/llvm-core-libs.yml"
       - "cmake/llvm-core-libs.cmake"
