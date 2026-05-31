@@ -10,6 +10,10 @@ on:
         description: 'llvm workflow run id'
         default: "latest"
         required: true
+      llvm_core_libs_run_id:
+        description: 'llvm core libs workflow run id'
+        default: "latest"
+        required: true
       halide_run_id:
         description: 'halide workflow run id'
         default: "latest"
@@ -43,6 +47,22 @@ jobs:
           $Workflow = "LLVM prebuilt"
           $Repository = $Env:GITHUB_REPOSITORY
           $RunId = '${{ github.event.inputs.llvm_run_id }}'
+          if ($RunId -eq 'latest') {
+            $RunId = $(gh run list -R $Repository -w $Workflow --json 'status,databaseId,conclusion') |
+              ConvertFrom-Json | Where-Object { ($_.status -eq 'completed') -and ($_.conclusion -eq 'success') } |
+              Select-Object -First 1 -ExpandProperty databaseId
+          }
+          Write-Host "Downloading run $RunId ($Workflow)"
+          & gh run download -R $Repository $RunId
+
+      - name: Download llvm core libs
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $Workflow = "LLVM core libs"
+          $Repository = $Env:GITHUB_REPOSITORY
+          $RunId = '${{ github.event.inputs.llvm_core_libs_run_id }}'
           if ($RunId -eq 'latest') {
             $RunId = $(gh run list -R $Repository -w $Workflow --json 'status,databaseId,conclusion') |
               ConvertFrom-Json | Where-Object { ($_.status -eq 'completed') -and ($_.conclusion -eq 'success') } |
@@ -87,7 +107,7 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        if: ${{ github.event.inputs.dry-run == 'false' }} 
+        if: ${{ github.event.inputs.dry-run == 'false' }}
         run: |
           $RootDir = Get-Location
           Get-ChildItem *.tar.xz -Depth 2 | % { Move-Item $_.FullName $RootDir -Force }
