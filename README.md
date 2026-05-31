@@ -25,7 +25,7 @@ clang+llvm-<version>-<arch>-<os>.tar.xz
 
 ### LLVM core libs
 
-The LLVM core libs workflow builds small static-library packages for linking against the LLVM Core and BitReader C APIs. Windows packages use the MSVC static CRT (`/MT`) by configuring `CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded`, then verify `LLVMCore.lib` contains `RuntimeLibrary=MT_StaticRelease` and does not contain `RuntimeLibrary=MD_DynamicRelease`.
+The LLVM core libs workflow builds small static-library packages for linking against the LLVM Core and BitReader C APIs. Windows packages are produced for both MSVC CRT modes: static CRT (`/MT`) and dynamic CRT (`/MD`). Each Windows package verifies `LLVMCore.lib` contains the expected `RuntimeLibrary` directive and does not contain the opposite CRT directive.
 
 Currently built LLVM core libs versions: `20.1.8`, `22.1.4`.
 
@@ -34,6 +34,7 @@ Artifacts are named:
 ```text
 llvm-core-libs-<version>-<arch>-<os>.tar.xz
 llvm-core-libs-<version>-<arch>-windows-mt.tar.xz
+llvm-core-libs-<version>-<arch>-windows-md.tar.xz
 ```
 
 ### Halide

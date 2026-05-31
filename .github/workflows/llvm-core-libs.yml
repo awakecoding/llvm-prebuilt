@@ -9,7 +9,7 @@ on:
       - "cmake/llvm-core-libs.cmake"
 jobs:
   build:
-    name: LLVM core libs ${{matrix.version}} [${{matrix.arch}}-${{matrix.os}}]
+    name: LLVM core libs ${{matrix.version}} [${{matrix.arch}}-${{matrix.os}}${{matrix.package_suffix}}]
     runs-on: ${{matrix.runner}}
     strategy:
       fail-fast: false
@@ -17,6 +17,23 @@ jobs:
         arch: [ x86_64, aarch64 ]
         os: [ windows, macos, ubuntu-22.04, ubuntu-24.04 ]
         version: [ 20.1.8, 22.1.4 ]
+        crt: [ default, mt, md ]
+
+        exclude:
+          - os: windows
+            crt: default
+          - os: macos
+            crt: mt
+          - os: macos
+            crt: md
+          - os: ubuntu-22.04
+            crt: mt
+          - os: ubuntu-22.04
+            crt: md
+          - os: ubuntu-24.04
+            crt: mt
+          - os: ubuntu-24.04
+            crt: md
 
         include:
           - version: 20.1.8
@@ -25,15 +42,31 @@ jobs:
             ref: llvmorg-22.1.4
 
           - os: windows
+            crt: mt
             runner: windows-2022
             package_suffix: -mt
+            cmake_msvc_runtime_library: MultiThreaded
+            msvc_runtime_label: MultiThreaded (/MT)
+            runtime_directive: RuntimeLibrary=MT_StaticRelease
+            forbidden_runtime_directive: RuntimeLibrary=MD_DynamicRelease
+          - os: windows
+            crt: md
+            runner: windows-2022
+            package_suffix: -md
+            cmake_msvc_runtime_library: MultiThreadedDLL
+            msvc_runtime_label: MultiThreadedDLL (/MD)
+            runtime_directive: RuntimeLibrary=MD_DynamicRelease
+            forbidden_runtime_directive: RuntimeLibrary=MT_StaticRelease
           - os: macos
+            crt: default
             runner: macos-latest
             package_suffix: ""
           - os: ubuntu-22.04
+            crt: default
             runner: ubuntu-22.04
             package_suffix: ""
           - os: ubuntu-24.04
+            crt: default
             runner: ubuntu-24.04
             package_suffix: ""
 
@@ -137,7 +170,7 @@ jobs:
           )
 
           if ('${{matrix.os}}' -eq 'windows') {
-            $CMakeArgs += "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"
+            $CMakeArgs += "-DCMAKE_MSVC_RUNTIME_LIBRARY=${{matrix.cmake_msvc_runtime_library}}"
           }
 
           if ('${{matrix.os}}' -eq 'macos') {
@@ -191,12 +224,16 @@ jobs:
             Copy-Item -Path (Join-Path "llvm-install/lib" $RequiredLibFile) -Destination $PackageLibDir -Force
           }
 
-          $MsvcRuntime = if ('${{matrix.os}}' -eq 'windows') { "MultiThreaded" } else { "N/A" }
+          $MsvcRuntime = if ('${{matrix.os}}' -eq 'windows') { "${{matrix.msvc_runtime_label}}" } else { "N/A" }
+          $MsvcCrt = if ('${{matrix.os}}' -eq 'windows') { "${{matrix.crt}}" } else { "N/A" }
+          $CMakeMsvcRuntime = if ('${{matrix.os}}' -eq 'windows') { "${{matrix.cmake_msvc_runtime_library}}" } else { "N/A" }
           @(
             "LLVM_VERSION=${{matrix.version}}"
             "LLVM_REF=${{matrix.ref}}"
             "TARGET=${{matrix.arch}}-${{matrix.os}}"
             "MSVC_RUNTIME=$MsvcRuntime"
+            "MSVC_CRT=$MsvcCrt"
+            "CMAKE_MSVC_RUNTIME_LIBRARY=$CMakeMsvcRuntime"
           ) | Set-Content -Path (Join-Path $PackageRoot "VERSION.txt") -Encoding ASCII
 
       - name: Validate LLVM core libs
@@ -373,12 +410,12 @@ jobs:
             }
 
             $DumpbinText = $DumpbinOutput -join "`n"
-            if ($DumpbinText -notmatch 'RuntimeLibrary=MT_StaticRelease') {
-              throw "LLVMCore.lib does not contain RuntimeLibrary=MT_StaticRelease"
+            if ($DumpbinText -notmatch '${{matrix.runtime_directive}}') {
+              throw "LLVMCore.lib does not contain ${{matrix.runtime_directive}}"
             }
 
-            if ($DumpbinText -match 'RuntimeLibrary=MD_DynamicRelease') {
-              throw "LLVMCore.lib contains RuntimeLibrary=MD_DynamicRelease"
+            if ($DumpbinText -match '${{matrix.forbidden_runtime_directive}}') {
+              throw "LLVMCore.lib contains ${{matrix.forbidden_runtime_directive}}"
             }
           }
 
@@ -389,7 +426,7 @@ jobs:
             throw "Package contains dynamic libraries: $($DynamicLibs.FullName -join ', ')"
           }
 
-          $MsvcRuntimeLine = if ($IsWindows) { "MSVC runtime: MultiThreaded (/MT)" } else { "MSVC runtime: N/A" }
+          $MsvcRuntimeLine = if ($IsWindows) { "MSVC runtime: ${{matrix.msvc_runtime_label}}" } else { "MSVC runtime: N/A" }
           $LlvmConfigValidationLine = if ($CanRunTargetTools) {
             "Target llvm-config validation: enabled"
           } else {
