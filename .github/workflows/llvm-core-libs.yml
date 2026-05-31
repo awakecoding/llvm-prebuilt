@@ -9,7 +9,7 @@ on:
       - "cmake/llvm-core-libs.cmake"
 jobs:
   build:
-    name: LLVM core libs ${{matrix.version}} [${{matrix.arch}}-${{matrix.os}}${{matrix.package_suffix}}]
+    name: LLVM core libs ${{matrix.version}} [${{matrix.arch}}-${{matrix.os}}-${{matrix.linkage}}${{matrix.package_suffix}}]
     runs-on: ${{matrix.runner}}
     strategy:
       fail-fast: false
@@ -17,6 +17,7 @@ jobs:
         arch: [ x86_64, aarch64 ]
         os: [ windows, macos, ubuntu-22.04, ubuntu-24.04 ]
         version: [ 20.1.8, 22.1.4 ]
+        linkage: [ static, shared ]
         crt: [ default, mt, md ]
 
         exclude:
@@ -161,9 +162,7 @@ jobs:
           $CMakeArgs = @(
             "-DBUILD_SHARED_LIBS=OFF",
             "-DLLVM_TARGETS_TO_BUILD=AArch64;X86",
-            "-DLLVM_BUILD_LLVM_DYLIB=OFF",
             "-DLLVM_BUILD_LLVM_C_DYLIB=OFF",
-            "-DLLVM_LINK_LLVM_DYLIB=OFF",
             "-DLLVM_ENABLE_LIBXML2=OFF",
             "-DLLVM_ENABLE_ZLIB=OFF",
             "-DLLVM_ENABLE_ZSTD=OFF"
@@ -177,6 +176,35 @@ jobs:
             $CMakeArgs += "-DCMAKE_OSX_ARCHITECTURES=${{matrix.osx_arch}}"
           }
 
+          $DevelopmentComponents = "llvm-config;cmake-exports;llvm-headers"
+          $StaticComponents = "LLVMBitReader;LLVMCore;LLVMRemarks;LLVMBitstreamReader;LLVMBinaryFormat;LLVMTargetParser;LLVMSupport;LLVMDemangle"
+
+          if ('${{matrix.linkage}}' -eq 'shared') {
+            $CMakeArgs += @(
+              "-DLLVM_BUILD_LLVM_DYLIB=ON",
+              "-DLLVM_LINK_LLVM_DYLIB=ON",
+              "-DLLVM_DYLIB_COMPONENTS=core;bitreader",
+              "-DLLVM_DISTRIBUTION_COMPONENTS=$DevelopmentComponents;LLVM"
+            )
+
+            if ('${{matrix.os}}' -eq 'windows') {
+              $CMakeArgs += "-DLLVM_BUILD_LLVM_DYLIB_VIS=ON"
+            } elseif ('${{matrix.os}}' -eq 'macos') {
+              $CMakeArgs += @(
+                "-DCMAKE_INSTALL_NAME_DIR=@rpath",
+                "-DCMAKE_INSTALL_RPATH=@loader_path/../lib"
+              )
+            } else {
+              $CMakeArgs += '-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib'
+            }
+          } else {
+            $CMakeArgs += @(
+              "-DLLVM_BUILD_LLVM_DYLIB=OFF",
+              "-DLLVM_LINK_LLVM_DYLIB=OFF",
+              "-DLLVM_DISTRIBUTION_COMPONENTS=$DevelopmentComponents;$StaticComponents"
+            )
+          }
+
           cmake -G Ninja -S llvm-project/llvm -B llvm-build $CMakeArgs `
             -DCMAKE_INSTALL_PREFIX=llvm-install `
             -DCMAKE_TOOLCHAIN_FILE="$CMakeToolchainFile" `
@@ -188,7 +216,7 @@ jobs:
       - name: Stage LLVM core libs
         shell: pwsh
         run: |
-          $PackageName = "llvm-core-libs-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}${{matrix.package_suffix}}"
+          $PackageName = "llvm-core-libs-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}-${{matrix.linkage}}${{matrix.package_suffix}}"
           $PackageRoot = Join-Path $PWD $PackageName
           $PackageBinDir = Join-Path $PackageRoot "bin"
           $PackageIncludeDir = Join-Path $PackageRoot "include"
@@ -219,9 +247,28 @@ jobs:
             "LLVMDemangle"
           )
 
-          foreach ($RequiredLib in $RequiredLibs) {
-            $RequiredLibFile = if ($IsWindows) { "$RequiredLib.lib" } else { "lib$RequiredLib.a" }
-            Copy-Item -Path (Join-Path "llvm-install/lib" $RequiredLibFile) -Destination $PackageLibDir -Force
+          if ('${{matrix.linkage}}' -eq 'static') {
+            foreach ($RequiredLib in $RequiredLibs) {
+              $RequiredLibFile = if ($IsWindows) { "$RequiredLib.lib" } else { "lib$RequiredLib.a" }
+              Copy-Item -Path (Join-Path "llvm-install/lib" $RequiredLibFile) -Destination $PackageLibDir -Force
+            }
+          } else {
+            if ($IsWindows) {
+              Copy-Item -Path llvm-install/bin/LLVM.dll -Destination $PackageBinDir -Force
+              Copy-Item -Path llvm-install/lib/LLVM.lib -Destination $PackageLibDir -Force
+            } elseif ($IsMacOS) {
+              $SharedLibraries = @(Get-ChildItem -Path llvm-install/lib -Filter "libLLVM*.dylib" -File)
+              if ($SharedLibraries.Count -eq 0) {
+                throw "No libLLVM dylib was installed"
+              }
+              Copy-Item -Path $SharedLibraries.FullName -Destination $PackageLibDir -Force
+            } else {
+              $SharedLibraries = @(Get-ChildItem -Path llvm-install/lib -Filter "libLLVM*.so*" -File)
+              if ($SharedLibraries.Count -eq 0) {
+                throw "No libLLVM shared object was installed"
+              }
+              Copy-Item -Path $SharedLibraries.FullName -Destination $PackageLibDir -Force
+            }
           }
 
           $MsvcRuntime = if ('${{matrix.os}}' -eq 'windows') { "${{matrix.msvc_runtime_label}}" } else { "N/A" }
@@ -231,10 +278,12 @@ jobs:
             "LLVM_VERSION=${{matrix.version}}"
             "LLVM_REF=${{matrix.ref}}"
             "TARGET=${{matrix.arch}}-${{matrix.os}}"
+            "LINKAGE=${{matrix.linkage}}"
             "MSVC_RUNTIME=$MsvcRuntime"
             "MSVC_CRT=$MsvcCrt"
             "CMAKE_MSVC_RUNTIME_LIBRARY=$CMakeMsvcRuntime"
           ) | Set-Content -Path (Join-Path $PackageRoot "VERSION.txt") -Encoding ASCII
+          echo "PACKAGE_NAME=$PackageName" >> $Env:GITHUB_ENV
 
       - name: Validate LLVM core libs
         shell: pwsh
@@ -248,11 +297,19 @@ jobs:
             }
 
             if ($Value.StartsWith("-l")) {
-              return $Value.Substring(2)
+              $LibraryName = $Value.Substring(2)
+              if ($LibraryName -match '^LLVM(?:[-\d].*)?$') {
+                return "LLVM"
+              }
+              return $LibraryName
             }
 
             if ($Value.EndsWith(".lib", [System.StringComparison]::OrdinalIgnoreCase)) {
-              return [System.IO.Path]::GetFileNameWithoutExtension($Value)
+              $LibraryName = [System.IO.Path]::GetFileNameWithoutExtension($Value)
+              if ($LibraryName -match '^LLVM(?:[-\d].*)?$') {
+                return "LLVM"
+              }
+              return $LibraryName
             }
 
             if ($Value.EndsWith(".a", [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -261,6 +318,10 @@ jobs:
                 return $FileName.Substring(3)
               }
               return $FileName
+            }
+
+            if ($Value -match 'lib(LLVM(?:[-\d].*)?)\.(?:dylib|so)') {
+              return "LLVM"
             }
 
             return $null
@@ -300,11 +361,12 @@ jobs:
             }
           }
 
-          $PackageName = "llvm-core-libs-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}${{matrix.package_suffix}}"
+          $PackageName = $Env:PACKAGE_NAME
           $PackageRoot = Join-Path $PWD $PackageName
           $ExeExt = if ($IsWindows) { ".exe" } else { "" }
           $LlvmConfig = Join-Path $PackageRoot "bin/llvm-config$ExeExt"
           $PackageLibDir = Join-Path $PackageRoot "lib"
+          $Linkage = "${{matrix.linkage}}"
           $RunnerArch = if ($Env:RUNNER_ARCH -eq "ARM64") { "aarch64" } else { "x86_64" }
           $CanRunTargetTools = ($RunnerArch -eq "${{matrix.arch}}")
 
@@ -333,7 +395,7 @@ jobs:
             }
           }
 
-          $ExpectedLlvmComponents = @(
+          $StaticLlvmComponents = @(
             "LLVMBitReader",
             "LLVMCore",
             "LLVMRemarks",
@@ -343,11 +405,13 @@ jobs:
             "LLVMSupport",
             "LLVMDemangle"
           )
+          $ExpectedLlvmComponents = if ($Linkage -eq "shared") { @("LLVM") } else { $StaticLlvmComponents }
+          $LinkCommand = if ($Linkage -eq "shared") { "--link-shared" } else { "--link-static" }
 
           if ($CanRunTargetTools) {
-            $LibTokens = @((& $LlvmConfig --link-static --libs core bitreader) -split '\s+' | ForEach-Object { Convert-ToLlvmComponentName $_ })
+            $LibTokens = @((& $LlvmConfig $LinkCommand --libs core bitreader) -split '\s+' | ForEach-Object { Convert-ToLlvmComponentName $_ })
             if ($LASTEXITCODE -ne 0) {
-              throw "llvm-config --link-static --libs core bitreader failed"
+              throw "llvm-config $LinkCommand --libs core bitreader failed"
             }
 
             $ReportedLlvmComponents = @($LibTokens | Where-Object { $_ -like "LLVM*" })
@@ -356,17 +420,33 @@ jobs:
             $ReportedLlvmComponents = $ExpectedLlvmComponents
           }
 
-          foreach ($ExpectedComponent in $ExpectedLlvmComponents) {
-            $ExpectedLibFile = if ($IsWindows) { "$ExpectedComponent.lib" } else { "lib$ExpectedComponent.a" }
-            if (-not (Test-Path (Join-Path $PackageLibDir $ExpectedLibFile))) {
-              throw "Package is missing '$ExpectedLibFile'"
+          if ($Linkage -eq "static") {
+            foreach ($ExpectedComponent in $ExpectedLlvmComponents) {
+              $ExpectedLibFile = if ($IsWindows) { "$ExpectedComponent.lib" } else { "lib$ExpectedComponent.a" }
+              if (-not (Test-Path (Join-Path $PackageLibDir $ExpectedLibFile))) {
+                throw "Package is missing '$ExpectedLibFile'"
+              }
+            }
+          } else {
+            if ($IsWindows) {
+              foreach ($ExpectedSharedFile in @("bin/LLVM.dll", "lib/LLVM.lib")) {
+                if (-not (Test-Path (Join-Path $PackageRoot $ExpectedSharedFile))) {
+                  throw "Package is missing '$ExpectedSharedFile'"
+                }
+              }
+            } elseif ($IsMacOS) {
+              if (@(Get-ChildItem -Path $PackageLibDir -Filter "libLLVM*.dylib" -File).Count -eq 0) {
+                throw "Package is missing libLLVM dylib"
+              }
+            } elseif (@(Get-ChildItem -Path $PackageLibDir -Filter "libLLVM*.so*" -File).Count -eq 0) {
+              throw "Package is missing libLLVM shared object"
             }
           }
 
           if ($CanRunTargetTools) {
-            $SystemLibTokens = @((& $LlvmConfig --link-static --system-libs core bitreader) -split '\s+' | ForEach-Object { Convert-ToSystemLibToken $_ })
+            $SystemLibTokens = @((& $LlvmConfig $LinkCommand --system-libs core bitreader) -split '\s+' | ForEach-Object { Convert-ToSystemLibToken $_ })
             if ($LASTEXITCODE -ne 0) {
-              throw "llvm-config --link-static --system-libs core bitreader failed"
+              throw "llvm-config $LinkCommand --system-libs core bitreader failed"
             }
 
             $ReportedSystemLibs = @($SystemLibTokens | Where-Object { $_ })
@@ -404,26 +484,56 @@ jobs:
             )
             Compare-LibSet -Expected $ExpectedSystemLibs -Actual $ReportedSystemLibs -Label "System libs"
 
-            $DumpbinOutput = & dumpbin /directives (Join-Path $PackageLibDir "LLVMCore.lib")
-            if ($LASTEXITCODE -ne 0) {
-              throw "dumpbin /directives LLVMCore.lib failed"
-            }
+            if ($Linkage -eq "static") {
+              $DumpbinOutput = & dumpbin /directives (Join-Path $PackageLibDir "LLVMCore.lib")
+              if ($LASTEXITCODE -ne 0) {
+                throw "dumpbin /directives LLVMCore.lib failed"
+              }
 
-            $DumpbinText = $DumpbinOutput -join "`n"
-            if ($DumpbinText -notmatch '${{matrix.runtime_directive}}') {
-              throw "LLVMCore.lib does not contain ${{matrix.runtime_directive}}"
-            }
+              $DumpbinText = $DumpbinOutput -join "`n"
+              if ($DumpbinText -notmatch '${{matrix.runtime_directive}}') {
+                throw "LLVMCore.lib does not contain ${{matrix.runtime_directive}}"
+              }
 
-            if ($DumpbinText -match '${{matrix.forbidden_runtime_directive}}') {
-              throw "LLVMCore.lib contains ${{matrix.forbidden_runtime_directive}}"
+              if ($DumpbinText -match '${{matrix.forbidden_runtime_directive}}') {
+                throw "LLVMCore.lib contains ${{matrix.forbidden_runtime_directive}}"
+              }
+            } else {
+              $DumpbinOutput = & dumpbin /dependents (Join-Path $PackageRoot "bin/LLVM.dll")
+              if ($LASTEXITCODE -ne 0) {
+                throw "dumpbin /dependents LLVM.dll failed"
+              }
+
+              $DumpbinText = $DumpbinOutput -join "`n"
+              $DynamicCrtPattern = 'VCRUNTIME|MSVCP|CONCRT'
+              if ('${{matrix.crt}}' -eq 'md' -and $DumpbinText -notmatch $DynamicCrtPattern) {
+                throw "LLVM.dll does not appear to depend on the dynamic MSVC runtime"
+              }
+
+              if ('${{matrix.crt}}' -eq 'mt' -and $DumpbinText -match $DynamicCrtPattern) {
+                throw "LLVM.dll appears to depend on the dynamic MSVC runtime"
+              }
             }
           }
 
           $DynamicLibs = @(Get-ChildItem -Path $PackageRoot -Recurse -File | Where-Object {
-            $_.Extension -in @(".dll", ".dylib", ".so")
+            ($_.Extension -in @(".dll", ".dylib", ".so")) -or ($_.Name -like "*.so.*")
           })
-          if ($DynamicLibs.Count -ne 0) {
+          if ($Linkage -eq "static" -and $DynamicLibs.Count -ne 0) {
             throw "Package contains dynamic libraries: $($DynamicLibs.FullName -join ', ')"
+          }
+
+          if ($Linkage -eq "shared" -and $DynamicLibs.Count -eq 0) {
+            throw "Shared package does not contain a dynamic library"
+          }
+
+          if ($Linkage -eq "shared") {
+            foreach ($StaticComponent in $StaticLlvmComponents) {
+              $StaticComponentFile = if ($IsWindows) { "$StaticComponent.lib" } else { "lib$StaticComponent.a" }
+              if (Test-Path (Join-Path $PackageLibDir $StaticComponentFile)) {
+                throw "Shared package contains static component library '$StaticComponentFile'"
+              }
+            }
           }
 
           $MsvcRuntimeLine = if ($IsWindows) { "MSVC runtime: ${{matrix.msvc_runtime_label}}" } else { "MSVC runtime: N/A" }
@@ -437,11 +547,12 @@ jobs:
           $ManifestLines.Add("LLVM core libs link manifest")
           $ManifestLines.Add("LLVM version: $Version")
           $ManifestLines.Add("Target: ${{matrix.arch}}-${{matrix.os}}")
+          $ManifestLines.Add("Linkage: $Linkage")
           $ManifestLines.Add($MsvcRuntimeLine)
           $ManifestLines.Add($LlvmConfigValidationLine)
           $ManifestLines.Add("")
           $ManifestLines.Add("Command:")
-          $ManifestLines.Add("  bin/llvm-config$ExeExt --link-static --libs core bitreader")
+          $ManifestLines.Add("  bin/llvm-config$ExeExt $LinkCommand --libs core bitreader")
           $ManifestLines.Add("")
           $ManifestLines.Add("LLVM libs:")
           foreach ($ExpectedLlvmComponent in $ExpectedLlvmComponents) {
@@ -449,7 +560,7 @@ jobs:
           }
           $ManifestLines.Add("")
           $ManifestLines.Add("Command:")
-          $ManifestLines.Add("  bin/llvm-config$ExeExt --link-static --system-libs core bitreader")
+          $ManifestLines.Add("  bin/llvm-config$ExeExt $LinkCommand --system-libs core bitreader")
           $ManifestLines.Add("")
           $ManifestLines.Add("System libs:")
           foreach ($ReportedSystemLib in ($ReportedSystemLibs | Sort-Object)) {
@@ -460,17 +571,17 @@ jobs:
       - name: Package LLVM core libs
         if: runner.os != 'Windows'
         run: |
-          tar -cJf llvm-core-libs-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}${{matrix.package_suffix}}.tar.xz llvm-core-libs-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}${{matrix.package_suffix}}
+          tar -cJf "$PACKAGE_NAME.tar.xz" "$PACKAGE_NAME"
 
       - name: Package LLVM core libs
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $PackageName = "llvm-core-libs-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}${{matrix.package_suffix}}"
+          $PackageName = $Env:PACKAGE_NAME
           cmd.exe /c "7z a -ttar -snl -so $PackageName.tar $PackageName | 7z a -si $PackageName.tar.xz"
 
       - name: Upload LLVM core libs package
         uses: actions/upload-artifact@v7
         with:
-          name: llvm-core-libs-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}${{matrix.package_suffix}}
-          path: llvm-core-libs-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}${{matrix.package_suffix}}.tar.xz
+          name: ${{ env.PACKAGE_NAME }}
+          path: ${{ env.PACKAGE_NAME }}.tar.xz
