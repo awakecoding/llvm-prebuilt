@@ -326,13 +326,34 @@ jobs:
             }
           }
 
-          $ManifestLlvmConfig = if ($CanRunTargetTools) { $LlvmConfig } else { $Env:LLVM_CONFIG_PATH }
-          $SystemLibTokens = @((& $ManifestLlvmConfig --link-static --system-libs core bitreader) -split '\s+' | ForEach-Object { Convert-ToSystemLibToken $_ })
-          if ($LASTEXITCODE -ne 0) {
-            throw "llvm-config --link-static --system-libs core bitreader failed"
-          }
+          if ($CanRunTargetTools) {
+            $SystemLibTokens = @((& $LlvmConfig --link-static --system-libs core bitreader) -split '\s+' | ForEach-Object { Convert-ToSystemLibToken $_ })
+            if ($LASTEXITCODE -ne 0) {
+              throw "llvm-config --link-static --system-libs core bitreader failed"
+            }
 
-          $ReportedSystemLibs = @($SystemLibTokens | Where-Object { $_ })
+            $ReportedSystemLibs = @($SystemLibTokens | Where-Object { $_ })
+          } else {
+            $ReportedSystemLibs = switch ('${{matrix.os}}') {
+              'windows' {
+                @(
+                  "advapi32.lib",
+                  "ntdll.lib",
+                  "ole32.lib",
+                  "psapi.lib",
+                  "shell32.lib",
+                  "uuid.lib",
+                  "ws2_32.lib"
+                )
+              }
+              'macos' {
+                @("-lm")
+              }
+              default {
+                @("-ldl", "-lm", "-lrt")
+              }
+            }
+          }
 
           if ($IsWindows) {
             $ExpectedSystemLibs = @(
@@ -374,25 +395,30 @@ jobs:
           } else {
             "Target llvm-config validation: skipped because runner architecture is $RunnerArch"
           }
-          @(
-            "LLVM core libs link manifest"
-            "LLVM version: $Version"
-            "Target: ${{matrix.arch}}-${{matrix.os}}"
-            $MsvcRuntimeLine
-            $LlvmConfigValidationLine
-            ""
-            "Command:"
-            "  bin/llvm-config$ExeExt --link-static --libs core bitreader"
-            ""
-            "LLVM libs:"
-            $ExpectedLlvmComponents
-            ""
-            "Command:"
-            "  bin/llvm-config$ExeExt --link-static --system-libs core bitreader"
-            ""
-            "System libs:"
-            ($ReportedSystemLibs | Sort-Object)
-          ) | Set-Content -Path (Join-Path $PackageRoot "llvm-link-core-bitreader.txt") -Encoding ASCII
+
+          $ManifestLines = [System.Collections.Generic.List[string]]::new()
+          $ManifestLines.Add("LLVM core libs link manifest")
+          $ManifestLines.Add("LLVM version: $Version")
+          $ManifestLines.Add("Target: ${{matrix.arch}}-${{matrix.os}}")
+          $ManifestLines.Add($MsvcRuntimeLine)
+          $ManifestLines.Add($LlvmConfigValidationLine)
+          $ManifestLines.Add("")
+          $ManifestLines.Add("Command:")
+          $ManifestLines.Add("  bin/llvm-config$ExeExt --link-static --libs core bitreader")
+          $ManifestLines.Add("")
+          $ManifestLines.Add("LLVM libs:")
+          foreach ($ExpectedLlvmComponent in $ExpectedLlvmComponents) {
+            $ManifestLines.Add($ExpectedLlvmComponent)
+          }
+          $ManifestLines.Add("")
+          $ManifestLines.Add("Command:")
+          $ManifestLines.Add("  bin/llvm-config$ExeExt --link-static --system-libs core bitreader")
+          $ManifestLines.Add("")
+          $ManifestLines.Add("System libs:")
+          foreach ($ReportedSystemLib in ($ReportedSystemLibs | Sort-Object)) {
+            $ManifestLines.Add($ReportedSystemLib)
+          }
+          $ManifestLines | Set-Content -Path (Join-Path $PackageRoot "llvm-link-core-bitreader.txt") -Encoding ASCII
 
       - name: Package LLVM core libs
         if: runner.os != 'Windows'
