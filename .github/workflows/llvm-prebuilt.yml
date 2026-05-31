@@ -147,23 +147,43 @@ jobs:
       - name: Configure LLVM host tools
         shell: pwsh
         run: |
-          cmake -G Ninja -S llvm-project/llvm -B llvm-host `
-            -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" `
-            -DCMAKE_BUILD_TYPE=Release -Wno-dev
+          $CMakeArgs = @(
+            "-DLLVM_TARGETS_TO_BUILD=Native",
+            "-DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra",
+            "-DLLVM_ENABLE_RUNTIMES=",
+            "-DLLVM_ENABLE_LIBXML2=OFF",
+            "-DLLVM_ENABLE_ZLIB=OFF",
+            "-DLLVM_ENABLE_ZSTD=OFF",
+            "-DLLVM_ENABLE_TERMINFO=OFF",
+            "-DLLVM_ENABLE_Z3_SOLVER=OFF",
+            "-DLLVM_INCLUDE_DOCS=OFF",
+            "-DLLVM_INCLUDE_TESTS=OFF",
+            "-DLLVM_INCLUDE_BENCHMARKS=OFF",
+            "-DLLVM_INCLUDE_EXAMPLES=OFF",
+            "-DLLVM_INCLUDE_GO_TESTS=OFF",
+            "-DCMAKE_BUILD_TYPE=Release"
+          )
+
+          if ($IsWindows) {
+            $LldLink = Get-Command lld-link -ErrorAction SilentlyContinue
+            if ($LldLink) {
+              $LldLinkPath = $LldLink.Source -Replace '\\','/'
+              $CMakeArgs += @("-DLLVM_ENABLE_LLD=ON", "-DCMAKE_LINKER=$LldLinkPath")
+              Write-Host "Using lld-link: $LldLinkPath"
+            }
+          }
+
+          cmake -G Ninja -S llvm-project/llvm -B llvm-host $CMakeArgs -Wno-dev
 
       - name: Build LLVM host tools
         shell: pwsh
         run: |
-          cmake --build llvm-host --target llvm-tblgen clang-tblgen llvm-config
-          cmake --build llvm-host --target clang-tidy-confusable-chars-gen
-          # Build host tools needed for cross-compilation
-          cmake --build llvm-host --target llvm-as llvm-link llvm-nm llvm-readobj opt
+          cmake --build llvm-host --target llvm-tblgen clang-tblgen clang-tidy-confusable-chars-gen llvm-nm llvm-readobj
           $HostBinPath = "$Env:GITHUB_WORKSPACE/llvm-host/bin"
           $ExeExt = if ($IsWindows) { ".exe" } else { "" }
           echo "LLVM_NATIVE_TOOL_DIR=$HostBinPath" >> $Env:GITHUB_ENV
           echo "LLVM_TABLEGEN=$HostBinPath/llvm-tblgen$ExeExt" >> $Env:GITHUB_ENV
           echo "CLANG_TABLEGEN=$HostBinPath/clang-tblgen$ExeExt" >> $Env:GITHUB_ENV
-          echo "LLVM_CONFIG_PATH=$HostBinPath/llvm-config$ExeExt" >> $Env:GITHUB_ENV
           echo "LLVM_VERSION=${{matrix.version}}" >> $Env:GITHUB_ENV
 
       - name: Free disk space after host tools build
@@ -223,6 +243,13 @@ jobs:
               "-DLIBXML2_STATIC_LIBRARY=$LIBXML2_LIBRARY",
               "-DLIBXML2_DEFINITIONS=-DLIBXML_STATIC"
             )
+
+            $LldLink = Get-Command lld-link -ErrorAction SilentlyContinue
+            if ($LldLink) {
+              $LldLinkPath = $LldLink.Source -Replace '\\','/'
+              $CMakeArgs += @("-DLLVM_ENABLE_LLD=ON", "-DCMAKE_LINKER=$LldLinkPath")
+              Write-Host "Using lld-link: $LldLinkPath"
+            }
           }
 
           if ('${{matrix.os}}' -like 'ubuntu-*' -and '${{matrix.arch}}' -eq 'aarch64') {
