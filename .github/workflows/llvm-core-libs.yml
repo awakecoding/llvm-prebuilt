@@ -160,7 +160,6 @@ jobs:
           $CMakeInitialCache = "$Env:GITHUB_WORKSPACE/llvm-prebuilt/cmake/llvm-core-libs.cmake"
 
           $CMakeArgs = @(
-            "-DBUILD_SHARED_LIBS=OFF",
             "-DLLVM_TARGETS_TO_BUILD=AArch64;X86",
             "-DLLVM_BUILD_LLVM_C_DYLIB=OFF",
             "-DLLVM_ENABLE_LIBXML2=OFF",
@@ -180,25 +179,36 @@ jobs:
           $StaticComponents = "LLVMBitReader;LLVMCore;LLVMRemarks;LLVMBitstreamReader;LLVMBinaryFormat;LLVMTargetParser;LLVMSupport;LLVMDemangle"
 
           if ('${{matrix.linkage}}' -eq 'shared') {
-            $CMakeArgs += @(
-              "-DLLVM_BUILD_LLVM_DYLIB=ON",
-              "-DLLVM_LINK_LLVM_DYLIB=ON",
-              "-DLLVM_DYLIB_COMPONENTS=core;bitreader",
-              "-DLLVM_DISTRIBUTION_COMPONENTS=$DevelopmentComponents;LLVM"
-            )
-
             if ('${{matrix.os}}' -eq 'windows') {
-              $CMakeArgs += "-DLLVM_BUILD_LLVM_DYLIB_VIS=ON"
+              $CMakeArgs += @(
+                "-DBUILD_SHARED_LIBS=ON",
+                "-DLLVM_BUILD_LLVM_DYLIB=OFF",
+                "-DLLVM_LINK_LLVM_DYLIB=OFF",
+                "-DLLVM_DISTRIBUTION_COMPONENTS=$DevelopmentComponents;$StaticComponents"
+              )
             } elseif ('${{matrix.os}}' -eq 'macos') {
               $CMakeArgs += @(
+                "-DBUILD_SHARED_LIBS=OFF",
+                "-DLLVM_BUILD_LLVM_DYLIB=ON",
+                "-DLLVM_LINK_LLVM_DYLIB=ON",
+                "-DLLVM_DYLIB_COMPONENTS=core;bitreader",
+                "-DLLVM_DISTRIBUTION_COMPONENTS=$DevelopmentComponents;LLVM",
                 "-DCMAKE_INSTALL_NAME_DIR=@rpath",
                 "-DCMAKE_INSTALL_RPATH=@loader_path/../lib"
               )
             } else {
-              $CMakeArgs += '-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib'
+              $CMakeArgs += @(
+                "-DBUILD_SHARED_LIBS=OFF",
+                "-DLLVM_BUILD_LLVM_DYLIB=ON",
+                "-DLLVM_LINK_LLVM_DYLIB=ON",
+                "-DLLVM_DYLIB_COMPONENTS=core;bitreader",
+                "-DLLVM_DISTRIBUTION_COMPONENTS=$DevelopmentComponents;LLVM",
+                '-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib'
+              )
             }
           } else {
             $CMakeArgs += @(
+              "-DBUILD_SHARED_LIBS=OFF",
               "-DLLVM_BUILD_LLVM_DYLIB=OFF",
               "-DLLVM_LINK_LLVM_DYLIB=OFF",
               "-DLLVM_DISTRIBUTION_COMPONENTS=$DevelopmentComponents;$StaticComponents"
@@ -254,8 +264,10 @@ jobs:
             }
           } else {
             if ($IsWindows) {
-              Copy-Item -Path llvm-install/bin/LLVM.dll -Destination $PackageBinDir -Force
-              Copy-Item -Path llvm-install/lib/LLVM.lib -Destination $PackageLibDir -Force
+              foreach ($RequiredLib in $RequiredLibs) {
+                Copy-Item -Path "llvm-install/bin/$RequiredLib.dll" -Destination $PackageBinDir -Force
+                Copy-Item -Path "llvm-install/lib/$RequiredLib.lib" -Destination $PackageLibDir -Force
+              }
             } elseif ($IsMacOS) {
               $SharedLibraries = @(Get-ChildItem -Path llvm-install/lib -Filter "libLLVM*.dylib" -File)
               if ($SharedLibraries.Count -eq 0) {
@@ -405,7 +417,8 @@ jobs:
             "LLVMSupport",
             "LLVMDemangle"
           )
-          $ExpectedLlvmComponents = if ($Linkage -eq "shared") { @("LLVM") } else { $StaticLlvmComponents }
+          $UsesAggregateSharedLibrary = ($Linkage -eq "shared" -and -not $IsWindows)
+          $ExpectedLlvmComponents = if ($UsesAggregateSharedLibrary) { @("LLVM") } else { $StaticLlvmComponents }
           $LinkCommand = if ($Linkage -eq "shared") { "--link-shared" } else { "--link-static" }
 
           if ($CanRunTargetTools) {
@@ -429,9 +442,11 @@ jobs:
             }
           } else {
             if ($IsWindows) {
-              foreach ($ExpectedSharedFile in @("bin/LLVM.dll", "lib/LLVM.lib")) {
-                if (-not (Test-Path (Join-Path $PackageRoot $ExpectedSharedFile))) {
-                  throw "Package is missing '$ExpectedSharedFile'"
+              foreach ($ExpectedComponent in $ExpectedLlvmComponents) {
+                foreach ($ExpectedSharedFile in @("bin/$ExpectedComponent.dll", "lib/$ExpectedComponent.lib")) {
+                  if (-not (Test-Path (Join-Path $PackageRoot $ExpectedSharedFile))) {
+                    throw "Package is missing '$ExpectedSharedFile'"
+                  }
                 }
               }
             } elseif ($IsMacOS) {
@@ -499,19 +514,19 @@ jobs:
                 throw "LLVMCore.lib contains ${{matrix.forbidden_runtime_directive}}"
               }
             } else {
-              $DumpbinOutput = & dumpbin /dependents (Join-Path $PackageRoot "bin/LLVM.dll")
+              $DumpbinOutput = & dumpbin /dependents (Join-Path $PackageRoot "bin/LLVMCore.dll")
               if ($LASTEXITCODE -ne 0) {
-                throw "dumpbin /dependents LLVM.dll failed"
+                throw "dumpbin /dependents LLVMCore.dll failed"
               }
 
               $DumpbinText = $DumpbinOutput -join "`n"
               $DynamicCrtPattern = 'VCRUNTIME|MSVCP|CONCRT'
               if ('${{matrix.crt}}' -eq 'md' -and $DumpbinText -notmatch $DynamicCrtPattern) {
-                throw "LLVM.dll does not appear to depend on the dynamic MSVC runtime"
+                throw "LLVMCore.dll does not appear to depend on the dynamic MSVC runtime"
               }
 
               if ('${{matrix.crt}}' -eq 'mt' -and $DumpbinText -match $DynamicCrtPattern) {
-                throw "LLVM.dll appears to depend on the dynamic MSVC runtime"
+                throw "LLVMCore.dll appears to depend on the dynamic MSVC runtime"
               }
             }
           }
@@ -527,7 +542,7 @@ jobs:
             throw "Shared package does not contain a dynamic library"
           }
 
-          if ($Linkage -eq "shared") {
+          if ($Linkage -eq "shared" -and -not $IsWindows) {
             foreach ($StaticComponent in $StaticLlvmComponents) {
               $StaticComponentFile = if ($IsWindows) { "$StaticComponent.lib" } else { "lib$StaticComponent.a" }
               if (Test-Path (Join-Path $PackageLibDir $StaticComponentFile)) {
