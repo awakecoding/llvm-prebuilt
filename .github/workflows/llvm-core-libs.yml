@@ -9,11 +9,13 @@ on:
       - "cmake/llvm-core-libs.cmake"
 jobs:
   build:
-    name: LLVM core libs ${{matrix.version}} [x86_64-windows-mt]
-    runs-on: windows-2022
+    name: LLVM core libs ${{matrix.version}} [${{matrix.arch}}-${{matrix.os}}]
+    runs-on: ${{matrix.runner}}
     strategy:
       fail-fast: false
       matrix:
+        arch: [ x86_64, aarch64 ]
+        os: [ windows, macos, ubuntu-22.04, ubuntu-24.04 ]
         version: [ 20.1.8, 22.1.4 ]
 
         include:
@@ -22,6 +24,33 @@ jobs:
           - version: 22.1.4
             ref: llvmorg-22.1.4
 
+          - os: windows
+            runner: windows-2022
+            package_suffix: -mt
+          - os: macos
+            runner: macos-latest
+            package_suffix: ""
+          - os: ubuntu-22.04
+            runner: ubuntu-22.04
+            package_suffix: ""
+          - os: ubuntu-24.04
+            runner: ubuntu-24.04
+            package_suffix: ""
+
+          - arch: x86_64
+            os: windows
+            msvc: amd64
+          - arch: aarch64
+            os: windows
+            msvc: amd64_arm64
+
+          - arch: x86_64
+            os: macos
+            osx_arch: x86_64
+          - arch: aarch64
+            os: macos
+            osx_arch: arm64
+
     steps:
       - name: Clone project
         uses: actions/checkout@v6
@@ -29,7 +58,20 @@ jobs:
           path: llvm-prebuilt
 
       - name: Configure Windows runner
+        if: runner.os == 'Windows'
         run: choco install --no-progress ninja 7zip
+
+      - name: Configure macOS runner
+        if: runner.os == 'macOS'
+        run: |
+          brew install ninja
+          echo "MACOSX_DEPLOYMENT_TARGET=10.13" >> $GITHUB_ENV
+
+      - name: Configure Linux runner
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build g++-aarch64-linux-gnu
 
       - name: Clone LLVM ${{matrix.version}}
         uses: actions/checkout@v6
@@ -39,6 +81,7 @@ jobs:
           path: llvm-project
 
       - name: Enable Windows host environment
+        if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: amd64
@@ -62,34 +105,48 @@ jobs:
         shell: pwsh
         run: |
           cmake --build llvm-host --target llvm-tblgen llvm-config
-          $HostBinPath = Join-Path $Env:GITHUB_WORKSPACE "llvm-host\bin"
+          $HostBinPath = "$Env:GITHUB_WORKSPACE/llvm-host/bin"
+          $ExeExt = if ($IsWindows) { ".exe" } else { "" }
           echo "LLVM_NATIVE_TOOL_DIR=$HostBinPath" >> $Env:GITHUB_ENV
-          echo "LLVM_TABLEGEN=$HostBinPath/llvm-tblgen.exe" >> $Env:GITHUB_ENV
-          echo "LLVM_CONFIG_PATH=$HostBinPath/llvm-config.exe" >> $Env:GITHUB_ENV
+          echo "LLVM_TABLEGEN=$HostBinPath/llvm-tblgen$ExeExt" >> $Env:GITHUB_ENV
+          echo "LLVM_CONFIG_PATH=$HostBinPath/llvm-config$ExeExt" >> $Env:GITHUB_ENV
           echo "LLVM_VERSION=${{matrix.version}}" >> $Env:GITHUB_ENV
 
       - name: Enable Windows target environment
+        if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
         with:
-          arch: amd64
+          arch: ${{matrix.msvc}}
 
       - name: Configure LLVM core libs
         shell: pwsh
         run: |
-          $CMakeToolchainFile = "$Env:GITHUB_WORKSPACE\llvm-prebuilt\cmake\x86_64-windows.cmake"
-          $CMakeInitialCache = "$Env:GITHUB_WORKSPACE\llvm-prebuilt\cmake\llvm-core-libs.cmake"
+          $TargetName = "${{matrix.arch}}-${{matrix.os}}"
+          $CMakeToolchainFile = "$Env:GITHUB_WORKSPACE/llvm-prebuilt/cmake/$TargetName.cmake"
+          $CMakeInitialCache = "$Env:GITHUB_WORKSPACE/llvm-prebuilt/cmake/llvm-core-libs.cmake"
 
-          cmake -G Ninja -S llvm-project\llvm -B llvm-build `
+          $CMakeArgs = @(
+            "-DBUILD_SHARED_LIBS=OFF",
+            "-DLLVM_TARGETS_TO_BUILD=AArch64;X86",
+            "-DLLVM_BUILD_LLVM_DYLIB=OFF",
+            "-DLLVM_BUILD_LLVM_C_DYLIB=OFF",
+            "-DLLVM_LINK_LLVM_DYLIB=OFF",
+            "-DLLVM_ENABLE_LIBXML2=OFF",
+            "-DLLVM_ENABLE_ZLIB=OFF",
+            "-DLLVM_ENABLE_ZSTD=OFF"
+          )
+
+          if ('${{matrix.os}}' -eq 'windows') {
+            $CMakeArgs += "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"
+          }
+
+          if ('${{matrix.os}}' -eq 'macos') {
+            $CMakeArgs += "-DCMAKE_OSX_ARCHITECTURES=${{matrix.osx_arch}}"
+          }
+
+          cmake -G Ninja -S llvm-project/llvm -B llvm-build $CMakeArgs `
             -DCMAKE_INSTALL_PREFIX=llvm-install `
             -DCMAKE_TOOLCHAIN_FILE="$CMakeToolchainFile" `
-            -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
-            -DBUILD_SHARED_LIBS=OFF `
-            -DLLVM_BUILD_LLVM_DYLIB=OFF `
-            -DLLVM_BUILD_LLVM_C_DYLIB=OFF `
-            -DLLVM_LINK_LLVM_DYLIB=OFF `
-            -DLLVM_ENABLE_LIBXML2=OFF `
-            -DLLVM_ENABLE_ZLIB=OFF `
-            -DLLVM_ENABLE_ZSTD=OFF `
             -C $CMakeInitialCache -Wno-dev
 
       - name: Install LLVM core libs
@@ -98,7 +155,7 @@ jobs:
       - name: Stage LLVM core libs
         shell: pwsh
         run: |
-          $PackageName = "llvm-core-libs-${{matrix.version}}-x86_64-windows-mt"
+          $PackageName = "llvm-core-libs-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}${{matrix.package_suffix}}"
           $PackageRoot = Join-Path $PWD $PackageName
           $PackageBinDir = Join-Path $PackageRoot "bin"
           $PackageIncludeDir = Join-Path $PackageRoot "include"
@@ -106,11 +163,12 @@ jobs:
 
           New-Item -ItemType Directory -Path $PackageBinDir, $PackageIncludeDir, $PackageLibDir -Force | Out-Null
 
-          Copy-Item -Path llvm-install\bin\llvm-config.exe -Destination $PackageBinDir -Force
-          Copy-Item -Path llvm-install\include\llvm-c -Destination $PackageIncludeDir -Recurse -Force
-          Copy-Item -Path llvm-install\include\llvm -Destination $PackageIncludeDir -Recurse -Force
+          $ExeExt = if ($IsWindows) { ".exe" } else { "" }
+          Copy-Item -Path "llvm-install/bin/llvm-config$ExeExt" -Destination $PackageBinDir -Force
+          Copy-Item -Path llvm-install/include/llvm-c -Destination $PackageIncludeDir -Recurse -Force
+          Copy-Item -Path llvm-install/include/llvm -Destination $PackageIncludeDir -Recurse -Force
 
-          $CMakeConfigDir = "llvm-install\lib\cmake\llvm"
+          $CMakeConfigDir = "llvm-install/lib/cmake/llvm"
           if (Test-Path $CMakeConfigDir) {
             $PackageCMakeDir = Join-Path $PackageLibDir "cmake"
             New-Item -ItemType Directory -Path $PackageCMakeDir -Force | Out-Null
@@ -118,31 +176,33 @@ jobs:
           }
 
           $RequiredLibs = @(
-            "LLVMBitReader.lib",
-            "LLVMCore.lib",
-            "LLVMRemarks.lib",
-            "LLVMBitstreamReader.lib",
-            "LLVMBinaryFormat.lib",
-            "LLVMTargetParser.lib",
-            "LLVMSupport.lib",
-            "LLVMDemangle.lib"
+            "LLVMBitReader",
+            "LLVMCore",
+            "LLVMRemarks",
+            "LLVMBitstreamReader",
+            "LLVMBinaryFormat",
+            "LLVMTargetParser",
+            "LLVMSupport",
+            "LLVMDemangle"
           )
 
           foreach ($RequiredLib in $RequiredLibs) {
-            Copy-Item -Path (Join-Path "llvm-install\lib" $RequiredLib) -Destination $PackageLibDir -Force
+            $RequiredLibFile = if ($IsWindows) { "$RequiredLib.lib" } else { "lib$RequiredLib.a" }
+            Copy-Item -Path (Join-Path "llvm-install/lib" $RequiredLibFile) -Destination $PackageLibDir -Force
           }
 
+          $MsvcRuntime = if ('${{matrix.os}}' -eq 'windows') { "MultiThreaded" } else { "N/A" }
           @(
             "LLVM_VERSION=${{matrix.version}}"
             "LLVM_REF=${{matrix.ref}}"
-            "TARGET=x86_64-windows"
-            "MSVC_RUNTIME=MultiThreaded"
+            "TARGET=${{matrix.arch}}-${{matrix.os}}"
+            "MSVC_RUNTIME=$MsvcRuntime"
           ) | Set-Content -Path (Join-Path $PackageRoot "VERSION.txt") -Encoding ASCII
 
       - name: Validate LLVM core libs
         shell: pwsh
         run: |
-          function Convert-ToLibName {
+          function Convert-ToLlvmComponentName {
             param([string] $Token)
 
             $Value = $Token.Trim().Trim('"')
@@ -151,7 +211,34 @@ jobs:
             }
 
             if ($Value.StartsWith("-l")) {
-              return "$($Value.Substring(2)).lib"
+              return $Value.Substring(2)
+            }
+
+            if ($Value.EndsWith(".lib", [System.StringComparison]::OrdinalIgnoreCase)) {
+              return [System.IO.Path]::GetFileNameWithoutExtension($Value)
+            }
+
+            if ($Value.EndsWith(".a", [System.StringComparison]::OrdinalIgnoreCase)) {
+              $FileName = [System.IO.Path]::GetFileNameWithoutExtension($Value)
+              if ($FileName.StartsWith("lib")) {
+                return $FileName.Substring(3)
+              }
+              return $FileName
+            }
+
+            return $null
+          }
+
+          function Convert-ToSystemLibToken {
+            param([string] $Token)
+
+            $Value = $Token.Trim().Trim('"')
+            if ([string]::IsNullOrWhiteSpace($Value)) {
+              return $null
+            }
+
+            if ($Value.StartsWith("-l")) {
+              return $Value
             }
 
             if ($Value.EndsWith(".lib", [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -176,111 +263,151 @@ jobs:
             }
           }
 
-          $PackageName = "llvm-core-libs-${{matrix.version}}-x86_64-windows-mt"
+          $PackageName = "llvm-core-libs-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}${{matrix.package_suffix}}"
           $PackageRoot = Join-Path $PWD $PackageName
-          $LlvmConfig = Join-Path $PackageRoot "bin\llvm-config.exe"
+          $ExeExt = if ($IsWindows) { ".exe" } else { "" }
+          $LlvmConfig = Join-Path $PackageRoot "bin/llvm-config$ExeExt"
           $PackageLibDir = Join-Path $PackageRoot "lib"
+          $RunnerArch = if ($Env:RUNNER_ARCH -eq "ARM64") { "aarch64" } else { "x86_64" }
+          $CanRunTargetTools = ($RunnerArch -eq "${{matrix.arch}}")
 
-          $Version = (& $LlvmConfig --version).Trim()
-          if ($LASTEXITCODE -ne 0) {
-            throw "llvm-config --version failed"
-          }
-
-          $ReportedLibDir = (& $LlvmConfig --libdir).Trim()
-          if ($LASTEXITCODE -ne 0) {
-            throw "llvm-config --libdir failed"
-          }
-
-          $ExpectedLibDirPath = (Resolve-Path $PackageLibDir).Path.TrimEnd('\')
-          $ReportedLibDirPath = (Resolve-Path $ReportedLibDir).Path.TrimEnd('\')
-          if ($ExpectedLibDirPath -ne $ReportedLibDirPath) {
-            throw "llvm-config --libdir reported '$ReportedLibDirPath', expected '$ExpectedLibDirPath'"
-          }
-
-          $ExpectedLlvmLibs = @(
-            "LLVMBitReader.lib",
-            "LLVMCore.lib",
-            "LLVMRemarks.lib",
-            "LLVMBitstreamReader.lib",
-            "LLVMBinaryFormat.lib",
-            "LLVMTargetParser.lib",
-            "LLVMSupport.lib",
-            "LLVMDemangle.lib"
-          )
-
-          $LibTokens = @((& $LlvmConfig --link-static --libs core bitreader) -split '\s+' | ForEach-Object { Convert-ToLibName $_ })
-          if ($LASTEXITCODE -ne 0) {
-            throw "llvm-config --link-static --libs core bitreader failed"
-          }
-
-          $ReportedLlvmLibs = @($LibTokens | Where-Object { $_ -like "LLVM*.lib" })
-          Compare-LibSet -Expected $ExpectedLlvmLibs -Actual $ReportedLlvmLibs -Label "LLVM libs"
-
-          foreach ($ReportedLib in $ReportedLlvmLibs) {
-            if (-not (Test-Path (Join-Path $PackageLibDir $ReportedLib))) {
-              throw "llvm-config reported '$ReportedLib', but it is not in the package lib directory"
+          if ($CanRunTargetTools) {
+            $Version = (& $LlvmConfig --version).Trim()
+            if ($LASTEXITCODE -ne 0) {
+              throw "llvm-config --version failed"
+            }
+          } else {
+            $Version = (& $Env:LLVM_CONFIG_PATH --version).Trim()
+            if ($LASTEXITCODE -ne 0) {
+              throw "host llvm-config --version failed"
             }
           }
 
-          $ExpectedSystemLibs = @(
-            "advapi32.lib",
-            "ntdll.lib",
-            "ole32.lib",
-            "psapi.lib",
-            "shell32.lib",
-            "uuid.lib",
-            "ws2_32.lib"
+          if ($CanRunTargetTools) {
+            $ReportedLibDir = (& $LlvmConfig --libdir).Trim()
+            if ($LASTEXITCODE -ne 0) {
+              throw "llvm-config --libdir failed"
+            }
+
+            $ExpectedLibDirPath = (Resolve-Path $PackageLibDir).Path.TrimEnd('\', '/')
+            $ReportedLibDirPath = (Resolve-Path $ReportedLibDir).Path.TrimEnd('\', '/')
+            if ($ExpectedLibDirPath -ne $ReportedLibDirPath) {
+              throw "llvm-config --libdir reported '$ReportedLibDirPath', expected '$ExpectedLibDirPath'"
+            }
+          }
+
+          $ExpectedLlvmComponents = @(
+            "LLVMBitReader",
+            "LLVMCore",
+            "LLVMRemarks",
+            "LLVMBitstreamReader",
+            "LLVMBinaryFormat",
+            "LLVMTargetParser",
+            "LLVMSupport",
+            "LLVMDemangle"
           )
 
-          $SystemLibTokens = @((& $LlvmConfig --link-static --system-libs core bitreader) -split '\s+' | ForEach-Object { Convert-ToLibName $_ })
+          if ($CanRunTargetTools) {
+            $LibTokens = @((& $LlvmConfig --link-static --libs core bitreader) -split '\s+' | ForEach-Object { Convert-ToLlvmComponentName $_ })
+            if ($LASTEXITCODE -ne 0) {
+              throw "llvm-config --link-static --libs core bitreader failed"
+            }
+
+            $ReportedLlvmComponents = @($LibTokens | Where-Object { $_ -like "LLVM*" })
+            Compare-LibSet -Expected $ExpectedLlvmComponents -Actual $ReportedLlvmComponents -Label "LLVM libs"
+          } else {
+            $ReportedLlvmComponents = $ExpectedLlvmComponents
+          }
+
+          foreach ($ExpectedComponent in $ExpectedLlvmComponents) {
+            $ExpectedLibFile = if ($IsWindows) { "$ExpectedComponent.lib" } else { "lib$ExpectedComponent.a" }
+            if (-not (Test-Path (Join-Path $PackageLibDir $ExpectedLibFile))) {
+              throw "Package is missing '$ExpectedLibFile'"
+            }
+          }
+
+          $ManifestLlvmConfig = if ($CanRunTargetTools) { $LlvmConfig } else { $Env:LLVM_CONFIG_PATH }
+          $SystemLibTokens = @((& $ManifestLlvmConfig --link-static --system-libs core bitreader) -split '\s+' | ForEach-Object { Convert-ToSystemLibToken $_ })
           if ($LASTEXITCODE -ne 0) {
             throw "llvm-config --link-static --system-libs core bitreader failed"
           }
 
-          $ReportedSystemLibs = @($SystemLibTokens | Where-Object { $_ -like "*.lib" })
-          Compare-LibSet -Expected $ExpectedSystemLibs -Actual $ReportedSystemLibs -Label "System libs"
+          $ReportedSystemLibs = @($SystemLibTokens | Where-Object { $_ })
 
-          $DumpbinOutput = & dumpbin /directives (Join-Path $PackageLibDir "LLVMCore.lib")
-          if ($LASTEXITCODE -ne 0) {
-            throw "dumpbin /directives LLVMCore.lib failed"
+          if ($IsWindows) {
+            $ExpectedSystemLibs = @(
+              "advapi32.lib",
+              "ntdll.lib",
+              "ole32.lib",
+              "psapi.lib",
+              "shell32.lib",
+              "uuid.lib",
+              "ws2_32.lib"
+            )
+            Compare-LibSet -Expected $ExpectedSystemLibs -Actual $ReportedSystemLibs -Label "System libs"
+
+            $DumpbinOutput = & dumpbin /directives (Join-Path $PackageLibDir "LLVMCore.lib")
+            if ($LASTEXITCODE -ne 0) {
+              throw "dumpbin /directives LLVMCore.lib failed"
+            }
+
+            $DumpbinText = $DumpbinOutput -join "`n"
+            if ($DumpbinText -notmatch 'RuntimeLibrary=MT_StaticRelease') {
+              throw "LLVMCore.lib does not contain RuntimeLibrary=MT_StaticRelease"
+            }
+
+            if ($DumpbinText -match 'RuntimeLibrary=MD_DynamicRelease') {
+              throw "LLVMCore.lib contains RuntimeLibrary=MD_DynamicRelease"
+            }
           }
 
-          $DumpbinText = $DumpbinOutput -join "`n"
-          if ($DumpbinText -notmatch 'RuntimeLibrary=MT_StaticRelease') {
-            throw "LLVMCore.lib does not contain RuntimeLibrary=MT_StaticRelease"
+          $DynamicLibs = @(Get-ChildItem -Path $PackageRoot -Recurse -File | Where-Object {
+            $_.Extension -in @(".dll", ".dylib", ".so")
+          })
+          if ($DynamicLibs.Count -ne 0) {
+            throw "Package contains dynamic libraries: $($DynamicLibs.FullName -join ', ')"
           }
 
-          if ($DumpbinText -match 'RuntimeLibrary=MD_DynamicRelease') {
-            throw "LLVMCore.lib contains RuntimeLibrary=MD_DynamicRelease"
+          $MsvcRuntimeLine = if ($IsWindows) { "MSVC runtime: MultiThreaded (/MT)" } else { "MSVC runtime: N/A" }
+          $LlvmConfigValidationLine = if ($CanRunTargetTools) {
+            "Target llvm-config validation: enabled"
+          } else {
+            "Target llvm-config validation: skipped because runner architecture is $RunnerArch"
           }
-
           @(
             "LLVM core libs link manifest"
             "LLVM version: $Version"
-            "Target: x86_64-windows"
-            "MSVC runtime: MultiThreaded (/MT)"
+            "Target: ${{matrix.arch}}-${{matrix.os}}"
+            $MsvcRuntimeLine
+            $LlvmConfigValidationLine
             ""
             "Command:"
-            "  bin\llvm-config.exe --link-static --libs core bitreader"
+            "  bin/llvm-config$ExeExt --link-static --libs core bitreader"
             ""
             "LLVM libs:"
-            $ExpectedLlvmLibs
+            $ExpectedLlvmComponents
             ""
             "Command:"
-            "  bin\llvm-config.exe --link-static --system-libs core bitreader"
+            "  bin/llvm-config$ExeExt --link-static --system-libs core bitreader"
             ""
             "System libs:"
             ($ReportedSystemLibs | Sort-Object)
           ) | Set-Content -Path (Join-Path $PackageRoot "llvm-link-core-bitreader.txt") -Encoding ASCII
 
       - name: Package LLVM core libs
+        if: runner.os != 'Windows'
+        run: |
+          tar -cJf llvm-core-libs-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}${{matrix.package_suffix}}.tar.xz llvm-core-libs-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}${{matrix.package_suffix}}
+
+      - name: Package LLVM core libs
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $PackageName = "llvm-core-libs-${{matrix.version}}-x86_64-windows-mt"
+          $PackageName = "llvm-core-libs-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}${{matrix.package_suffix}}"
           cmd.exe /c "7z a -ttar -snl -so $PackageName.tar $PackageName | 7z a -si $PackageName.tar.xz"
 
       - name: Upload LLVM core libs package
         uses: actions/upload-artifact@v7
         with:
-          name: llvm-core-libs-${{matrix.version}}-x86_64-windows-mt
-          path: llvm-core-libs-${{matrix.version}}-x86_64-windows-mt.tar.xz
+          name: llvm-core-libs-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}${{matrix.package_suffix}}
+          path: llvm-core-libs-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}${{matrix.package_suffix}}.tar.xz

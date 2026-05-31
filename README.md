@@ -25,14 +25,15 @@ clang+llvm-<version>-<arch>-<os>.tar.xz
 
 ### LLVM core libs
 
-The LLVM core libs workflow builds a small Windows x64 package for static linking against the LLVM Core and BitReader C APIs. It uses the MSVC static CRT (`/MT`) by configuring `CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded`, then verifies `LLVMCore.lib` contains `RuntimeLibrary=MT_StaticRelease` and does not contain `RuntimeLibrary=MD_DynamicRelease`.
+The LLVM core libs workflow builds small static-library packages for linking against the LLVM Core and BitReader C APIs. Windows packages use the MSVC static CRT (`/MT`) by configuring `CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded`, then verify `LLVMCore.lib` contains `RuntimeLibrary=MT_StaticRelease` and does not contain `RuntimeLibrary=MD_DynamicRelease`.
 
 Currently built LLVM core libs versions: `20.1.8`, `22.1.4`.
 
 Artifacts are named:
 
 ```text
-llvm-core-libs-<version>-x86_64-windows-mt.tar.xz
+llvm-core-libs-<version>-<arch>-<os>.tar.xz
+llvm-core-libs-<version>-<arch>-windows-mt.tar.xz
 ```
 
 ### Halide
@@ -81,7 +82,7 @@ Additional workflows package host platform support files:
 | Path | Purpose |
 |------|---------|
 | `.github/workflows/llvm-prebuilt.yml` | Builds LLVM/Clang packages. |
-| `.github/workflows/llvm-core-libs.yml` | Builds Windows x64 LLVM Core and BitReader static library packages with the MSVC static CRT. |
+| `.github/workflows/llvm-core-libs.yml` | Builds static LLVM Core and BitReader library packages. |
 | `.github/workflows/halide-prebuilt.yml` | Builds Halide packages from LLVM workflow artifacts. |
 | `.github/workflows/cctools-prebuilt.yml` | Builds Linux cctools packages. |
 | `.github/workflows/github-release.yml` | Downloads workflow artifacts, creates checksums, and publishes a release. |
@@ -107,7 +108,7 @@ All major package workflows are manually triggered with `workflow_dispatch`.
 Recommended order:
 
 1. Run `LLVM prebuilt`.
-2. Run `LLVM core libs` if Windows x64 static CRT LLVM Core/BitReader artifacts are needed.
+2. Run `LLVM core libs` if static LLVM Core/BitReader artifacts are needed.
 3. Run `halide prebuilt` with the LLVM workflow run ID, or use `latest`.
 4. Run `cctools prebuilt` if Linux cctools artifacts are needed.
 5. Run `GitHub Release` with the desired workflow run IDs to collect artifacts and publish a release.

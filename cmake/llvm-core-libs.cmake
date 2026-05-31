@@ -29,7 +29,7 @@ endif()
 set(PACKAGE_VENDOR "awakecoding" CACHE STRING "")
 
 set(LLVM_TARGETS_TO_BUILD
-    "X86"
+    "AArch64;X86"
     CACHE STRING "")
 
 set(LLVM_ENABLE_PROJECTS "" CACHE STRING "")
