@@ -178,12 +178,13 @@ jobs:
       - name: Build LLVM host tools
         shell: pwsh
         run: |
-          cmake --build llvm-host --target llvm-tblgen clang-tblgen clang-tidy-confusable-chars-gen llvm-nm llvm-readobj
+          cmake --build llvm-host --target llvm-tblgen clang-tblgen llvm-config clang-tidy-confusable-chars-gen llvm-nm llvm-readobj
           $HostBinPath = "$Env:GITHUB_WORKSPACE/llvm-host/bin"
           $ExeExt = if ($IsWindows) { ".exe" } else { "" }
           echo "LLVM_NATIVE_TOOL_DIR=$HostBinPath" >> $Env:GITHUB_ENV
           echo "LLVM_TABLEGEN=$HostBinPath/llvm-tblgen$ExeExt" >> $Env:GITHUB_ENV
           echo "CLANG_TABLEGEN=$HostBinPath/clang-tblgen$ExeExt" >> $Env:GITHUB_ENV
+          echo "LLVM_CONFIG_PATH=$HostBinPath/llvm-config$ExeExt" >> $Env:GITHUB_ENV
           echo "LLVM_VERSION=${{matrix.version}}" >> $Env:GITHUB_ENV
 
       - name: Free disk space after host tools build
