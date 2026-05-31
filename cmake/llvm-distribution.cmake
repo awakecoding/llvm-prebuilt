@@ -38,11 +38,7 @@ set(LLVM_TARGETS_TO_BUILD
     "X86"
     "ARM"
     "AArch64"
-    "Mips"
-    "PowerPC"
     "RISCV"
-    "NVPTX"
-    "Hexagon"
     "WebAssembly"
     CACHE STRING "")
 
