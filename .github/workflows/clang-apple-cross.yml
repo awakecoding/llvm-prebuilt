@@ -1,0 +1,126 @@
+name: clang-apple-cross
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - friendly-couscous
+    paths:
+      - ".github/workflows/clang-apple-cross.yml"
+      - "cmake/clang-apple-cross.cmake"
+
+jobs:
+  build:
+    name: clang-apple-cross ${{matrix.version}} [${{matrix.arch}}-${{matrix.os}}]
+    runs-on: ${{matrix.runner}}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [ x86_64 ]
+        os: [ ubuntu-22.04, ubuntu-24.04 ]
+        version: [ 22.1.4 ]
+
+        include:
+          - version: 22.1.4
+            ref: llvmorg-22.1.4
+          - os: ubuntu-22.04
+            runner: ubuntu-22.04
+          - os: ubuntu-24.04
+            runner: ubuntu-24.04
+
+    steps:
+      - name: Clone project
+        uses: actions/checkout@v6
+        with:
+          path: llvm-prebuilt
+
+      - name: Configure Linux runner
+        if: runner.os == 'Linux'
+        shell: pwsh
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zstd xz-utils
+          sudo apt-get install -y ninja-build
+          sudo apt-get install -y libxml2-dev zlib1g-dev
+
+      - name: Clone LLVM ${{matrix.version}}
+        uses: actions/checkout@v6
+        with:
+          repository: llvm/llvm-project
+          ref: ${{matrix.ref}}
+          path: llvm-project
+
+      - name: Configure LLVM host tools
+        shell: pwsh
+        run: |
+          $CMakeArgs = @(
+            "-DLLVM_TARGETS_TO_BUILD=Native",
+            "-DLLVM_ENABLE_PROJECTS=clang;llvm",
+            "-DLLVM_ENABLE_RUNTIMES=",
+            "-DLLVM_ENABLE_LIBXML2=OFF",
+            "-DLLVM_ENABLE_ZLIB=OFF",
+            "-DLLVM_ENABLE_ZSTD=OFF",
+            "-DLLVM_ENABLE_TERMINFO=OFF",
+            "-DLLVM_ENABLE_Z3_SOLVER=OFF",
+            "-DLLVM_INCLUDE_DOCS=OFF",
+            "-DLLVM_INCLUDE_TESTS=OFF",
+            "-DLLVM_INCLUDE_BENCHMARKS=OFF",
+            "-DLLVM_INCLUDE_EXAMPLES=OFF",
+            "-DLLVM_INCLUDE_GO_TESTS=OFF",
+            "-DCMAKE_BUILD_TYPE=Release"
+          )
+
+          cmake -G Ninja -S llvm-project/llvm -B llvm-host $CMakeArgs -Wno-dev
+
+      - name: Build LLVM host tools
+        shell: pwsh
+        run: |
+          cmake --build llvm-host --target llvm-tblgen clang-tblgen llvm-config
+          $HostBinPath = "$Env:GITHUB_WORKSPACE/llvm-host/bin"
+          $ExeExt = ""
+          echo "LLVM_NATIVE_TOOL_DIR=$HostBinPath" >> $Env:GITHUB_ENV
+          echo "LLVM_TABLEGEN=$HostBinPath/llvm-tblgen$ExeExt" >> $Env:GITHUB_ENV
+          echo "CLANG_TABLEGEN=$HostBinPath/clang-tblgen$ExeExt" >> $Env:GITHUB_ENV
+          echo "LLVM_CONFIG_PATH=$HostBinPath/llvm-config$ExeExt" >> $Env:GITHUB_ENV
+          echo "LLVM_VERSION=${{matrix.version}}" >> $Env:GITHUB_ENV
+
+      - name: Free disk space after host tools build
+        if: runner.os == 'Linux'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path llvm-host-tools -Force | Out-Null
+          Copy-Item -Path llvm-host/bin/* -Destination llvm-host-tools/ -Recurse -Force
+          Remove-Item -Path llvm-host -Recurse -Force
+          New-Item -ItemType Directory -Path llvm-host/bin -Force | Out-Null
+          Copy-Item -Path llvm-host-tools/* -Destination llvm-host/bin/ -Recurse -Force
+          Remove-Item -Path llvm-host-tools -Recurse -Force
+          & df -h
+
+      - name: Configure LLVM
+        shell: pwsh
+        run: |
+          $TargetName = "${{matrix.arch}}-${{matrix.os}}"
+          $CMakeToolchainFile = "$Env:GITHUB_WORKSPACE/llvm-prebuilt/cmake/$TargetName.cmake"
+          $CMakeInitialCache = "$Env:GITHUB_WORKSPACE/llvm-prebuilt/cmake/clang-apple-cross.cmake"
+
+          cmake -G Ninja -S llvm-project/llvm -B llvm-build `
+            -DCMAKE_INSTALL_PREFIX=llvm-install `
+            -DCMAKE_TOOLCHAIN_FILE="$CMakeToolchainFile" `
+            -C $CMakeInitialCache -Wno-dev
+
+      - name: Build LLVM
+        run: cmake --build llvm-build
+
+      - name: Install LLVM
+        run: cmake --build llvm-build --target install-distribution
+
+      - name: Package LLVM
+        run: |
+          mv llvm-install clang-apple-cross-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
+          tar -cJf clang-apple-cross-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz clang-apple-cross-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
+
+      - name: Upload LLVM package
+        uses: actions/upload-artifact@v7
+        with:
+          name: clang-apple-cross-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}
+          path: clang-apple-cross-${{matrix.version}}-${{matrix.arch}}-${{matrix.os}}.tar.xz
