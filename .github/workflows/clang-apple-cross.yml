@@ -2,12 +2,6 @@ name: clang-apple-cross
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - friendly-couscous
-    paths:
-      - ".github/workflows/clang-apple-cross.yml"
-      - "cmake/clang-apple-cross.cmake"
 
 jobs:
   build:
