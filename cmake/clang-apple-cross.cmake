@@ -38,8 +38,9 @@ endif()
 
 set(PACKAGE_VENDOR "awakecoding" CACHE STRING "")
 
-# Apple arm64 only: no Intel Mac, no iOS simulator x64, no other backends.
+# Apple x86_64 and arm64: no other backends.
 set(LLVM_TARGETS_TO_BUILD
+    "X86"
     "AArch64"
     CACHE STRING "")
 
