@@ -1,0 +1,300 @@
+name: Rust prebuilt
+
+on:
+  workflow_dispatch:
+    inputs:
+      llvm_run_id:
+        description: 'LLVM workflow run id'
+        default: "latest"
+        required: true
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  build:
+    name: Rust ${{ matrix.version }} [${{ matrix.arch }}-${{ matrix.os }}]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            os: windows
+            runner: windows-2025
+            version: 1.99.0
+          - arch: aarch64
+            os: macos
+            runner: macos-26
+            version: 1.99.0
+          - arch: x86_64
+            os: ubuntu-22.04
+            runner: ubuntu-22.04
+            version: 1.99.0
+          - arch: x86_64
+            os: ubuntu-24.04
+            runner: ubuntu-24.04
+            version: 1.99.0
+
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+
+      - name: Configure runner
+        shell: pwsh
+        run: |
+          $RustBuildDir = Join-Path $Env:RUNNER_TEMP "rust-build"
+          New-Item -Path $RustBuildDir -ItemType Directory -Force | Out-Null
+          echo "RUST_BUILD_DIR=$RustBuildDir" >> $Env:GITHUB_ENV
+
+          if ($IsMacOS) {
+            echo "MACOSX_DEPLOYMENT_TARGET=10.13" >> $Env:GITHUB_ENV
+          } elseif ($IsLinux) {
+            sudo apt-get update
+            sudo apt-get install -y g++-aarch64-linux-gnu xz-utils
+          }
+
+      - name: Resolve LLVM workflow run
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $LlvmVersion = "22.1.4"
+          $LlvmRunId = '${{ inputs.llvm_run_id }}'
+          if ($LlvmRunId -eq 'latest') {
+            $LlvmRunId = $(gh run list -R $Env:GITHUB_REPOSITORY -w 'LLVM prebuilt' --json 'status,databaseId,conclusion') |
+              ConvertFrom-Json | Where-Object { ($_.status -eq 'completed') -and ($_.conclusion -eq 'success') } |
+              Select-Object -First 1 -ExpandProperty databaseId
+          }
+
+          if (-Not $LlvmRunId) {
+            throw "No successful LLVM prebuilt workflow run was found"
+          }
+
+          echo "LLVM_VERSION=$LlvmVersion" >> $Env:GITHUB_ENV
+          echo "LLVM_RUN_ID=$LlvmRunId" >> $Env:GITHUB_ENV
+
+      - name: Install clang+llvm
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $LlvmName = "clang+llvm-${Env:LLVM_VERSION}-${{ matrix.arch }}-${{ matrix.os }}"
+          & gh run download $Env:LLVM_RUN_ID --repo $Env:GITHUB_REPOSITORY -n $LlvmName
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to download $LlvmName from workflow run $Env:LLVM_RUN_ID"
+          }
+
+          $TempDir = Join-Path $Env:RUNNER_TEMP "llvm-extract"
+          New-Item -Path $TempDir -ItemType Directory -Force | Out-Null
+          tar -xf "${LlvmName}.tar.xz" -C $TempDir
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to extract ${LlvmName}.tar.xz"
+          }
+
+          $LlvmPrefix = Join-Path $Env:RUNNER_TEMP "llvm"
+          Move-Item (Join-Path $TempDir $LlvmName) $LlvmPrefix
+          $ExeSuffix = if ($IsWindows) { ".exe" } else { "" }
+          $LlvmConfig = Join-Path $LlvmPrefix "bin/llvm-config${ExeSuffix}"
+          if (-Not (Test-Path $LlvmConfig)) {
+            throw "llvm-config was not found at $LlvmConfig"
+          }
+
+          $LlvmBinPath = Join-Path $LlvmPrefix "bin"
+          echo "LLVM_CONFIG=$LlvmConfig" >> $Env:GITHUB_ENV
+          echo "$LlvmBinPath" >> $Env:GITHUB_PATH
+
+      - name: Clone project
+        uses: actions/checkout@v7
+        with:
+          path: llvm-prebuilt
+
+      - name: Clone Rust ${{ matrix.version }}
+        uses: actions/checkout@v7
+        with:
+          repository: rust-lang/rust
+          ref: ${{ matrix.version }}
+          fetch-depth: 1
+          path: rust
+
+      - name: Clone required Rust submodules
+        shell: pwsh
+        run: git -C rust submodule update --init --depth 1 src/tools/cargo library/backtrace
+
+      - name: Configure Android NDK
+        if: runner.os == 'Linux'
+        shell: pwsh
+        run: |
+          $AndroidNdk = if ($Env:ANDROID_NDK_LATEST_HOME) {
+            $Env:ANDROID_NDK_LATEST_HOME
+          } else {
+            $Env:ANDROID_NDK_HOME
+          }
+          if (-Not $AndroidNdk) {
+            throw "No Android NDK installation was found"
+          }
+
+          $AndroidToolchain = Join-Path $AndroidNdk "toolchains/llvm/prebuilt/linux-x86_64"
+          if (-Not (Test-Path $AndroidToolchain)) {
+            throw "Android NDK toolchain was not found at $AndroidToolchain"
+          }
+
+          Get-ChildItem -Path $AndroidToolchain -Filter "libunwind.a" -Recurse | ForEach-Object {
+            $LibGcc = Join-Path $_.DirectoryName "libgcc.a"
+            if (-Not (Test-Path $LibGcc)) {
+              Copy-Item $_.FullName $LibGcc
+            }
+          }
+
+          echo "ANDROID_TOOLCHAIN=$AndroidToolchain" >> $Env:GITHUB_ENV
+
+      - name: Configure Rust
+        shell: pwsh
+        working-directory: rust
+        run: |
+          $RustBuildDir = $Env:RUST_BUILD_DIR -Replace '\\','/'
+          $RustLlvmConfig = $Env:LLVM_CONFIG -Replace '\\','/'
+          $RustHostPlatform = if ($IsWindows) {
+            "pc-windows-msvc"
+          } elseif ($IsMacOS) {
+            "apple-darwin"
+          } else {
+            "unknown-linux-gnu"
+          }
+          $RustHostTarget = "${{ matrix.arch }}-$RustHostPlatform"
+
+          $RustTargets = if ($IsWindows) {
+            @(
+              "x86_64-pc-windows-msvc",
+              "aarch64-pc-windows-msvc"
+            )
+          } elseif ($IsMacOS) {
+            @(
+              "x86_64-apple-darwin",
+              "aarch64-apple-darwin",
+              "x86_64-apple-ios",
+              "aarch64-apple-ios"
+            )
+          } else {
+            @(
+              "x86_64-unknown-linux-gnu",
+              "aarch64-unknown-linux-gnu",
+              "i686-linux-android",
+              "armv7-linux-androideabi",
+              "x86_64-linux-android",
+              "aarch64-linux-android"
+            )
+          }
+          $QuotedTargets = ($RustTargets | ForEach-Object { "`"$_`"" }) -join ", "
+
+          $Config = @(
+            "profile = `"dist`"",
+            "",
+            "[build]",
+            "build = `"$RustHostTarget`"",
+            "host = [`"$RustHostTarget`"]",
+            "target = [$QuotedTargets]",
+            "build-dir = `"$RustBuildDir`"",
+            "docs = false",
+            "extended = true",
+            "tools = [`"cargo`", `"clippy`", `"rustdoc`", `"rustfmt`", `"rust-analyzer`"]",
+            "submodules = false",
+            "",
+            "[llvm]",
+            "download-ci-llvm = false",
+            "link-shared = false",
+            "static-libstdcpp = false",
+            "",
+            "[rust]",
+            "channel = `"stable`"",
+            "dist-src = false",
+            "",
+            "[target.$RustHostTarget]",
+            "llvm-config = `"$RustLlvmConfig`"",
+            "llvm-has-rust-patches = false",
+            "crt-static = false",
+            "",
+            "[dist]",
+            "src-tarball = false",
+            "compression-formats = [`"xz`"]",
+            "compression-profile = `"balanced`""
+          )
+
+          if ($IsLinux) {
+            $Aarch64Cc = (Get-Command aarch64-linux-gnu-gcc).Source -Replace '\\','/'
+            $Aarch64Cxx = (Get-Command aarch64-linux-gnu-g++).Source -Replace '\\','/'
+            $Aarch64Ar = (Get-Command aarch64-linux-gnu-ar).Source -Replace '\\','/'
+            $Config += @(
+              "",
+              "[target.aarch64-unknown-linux-gnu]",
+              "cc = `"$Aarch64Cc`"",
+              "cxx = `"$Aarch64Cxx`"",
+              "ar = `"$Aarch64Ar`"",
+              "linker = `"$Aarch64Cc`""
+            )
+
+            $AndroidToolchain = $Env:ANDROID_TOOLCHAIN -Replace '\\','/'
+            $AndroidAr = "$AndroidToolchain/bin/llvm-ar"
+            $AndroidRanlib = "$AndroidToolchain/bin/llvm-ranlib"
+            $AndroidTargets = @{
+              "i686-linux-android" = "i686-linux-android21-clang"
+              "armv7-linux-androideabi" = "armv7a-linux-androideabi21-clang"
+              "x86_64-linux-android" = "x86_64-linux-android21-clang"
+              "aarch64-linux-android" = "aarch64-linux-android21-clang"
+            }
+
+            foreach ($Target in $AndroidTargets.GetEnumerator()) {
+              $AndroidCc = "$AndroidToolchain/bin/$($Target.Value)"
+              $Config += @(
+                "",
+                "[target.$($Target.Key)]",
+                "cc = `"$AndroidCc`"",
+                "ar = `"$AndroidAr`"",
+                "ranlib = `"$AndroidRanlib`"",
+                "linker = `"$AndroidCc`""
+              )
+            }
+          }
+
+          Set-Content -Path bootstrap.toml -Value $Config
+          Get-Content bootstrap.toml
+
+      - name: Build and package Rust
+        shell: pwsh
+        working-directory: rust
+        run: |
+          Remove-Item Env:GITHUB_ACTIONS -ErrorAction SilentlyContinue
+          Remove-Item Env:CI -ErrorAction SilentlyContinue
+          python x.py dist
+          if ($LASTEXITCODE -ne 0) {
+            throw "Rust distribution build failed"
+          }
+
+      - name: Package Rust toolchain
+        shell: pwsh
+        run: |
+          $PackageName = "rust-${{ matrix.version }}-${{ matrix.arch }}-${{ matrix.os }}"
+          $PackageDir = Join-Path $Env:RUNNER_TEMP $PackageName
+          New-Item -Path $PackageDir -ItemType Directory -Force | Out-Null
+          Move-Item (Join-Path $Env:RUST_BUILD_DIR "dist/*.tar.xz") $PackageDir
+
+          Push-Location $Env:RUNNER_TEMP
+          try {
+            tar -cJf "$Env:GITHUB_WORKSPACE/${PackageName}.tar.xz" $PackageName
+            if ($LASTEXITCODE -ne 0) {
+              throw "Failed to create ${PackageName}.tar.xz"
+            }
+          } finally {
+            Pop-Location
+          }
+
+      - name: Upload Rust packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: rust-${{ matrix.version }}-${{ matrix.arch }}-${{ matrix.os }}
+          path: rust-${{ matrix.version }}-${{ matrix.arch }}-${{ matrix.os }}.tar.xz
+          if-no-files-found: error
