@@ -237,7 +237,7 @@ jobs:
           }
           $QuotedTargets = ($RustTargets | ForEach-Object { "`"$_`"" }) -join ", "
           $RustTools = @("cargo", "clippy", "rustdoc", "rustfmt", "rust-analyzer")
-          if ($IsMacOS) {
+          if ($IsMacOS -or $IsWindows) {
             $RustTools += "analysis"
           }
           $QuotedTools = ($RustTools | ForEach-Object { "`"$_`"" }) -join ", "
