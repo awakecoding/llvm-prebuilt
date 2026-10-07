@@ -105,6 +105,7 @@ set(LLVM_TOOLCHAIN_TOOLS
     llvm-cov
     llvm-config
     llvm-diff
+    llvm-dis
     llvm-dlltool
     llvm-dwarfdump
     llvm-ifs

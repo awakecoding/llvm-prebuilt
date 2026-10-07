@@ -249,10 +249,12 @@ jobs:
 
             foreach ($Target in $AndroidTargets.GetEnumerator()) {
               $AndroidCc = "$AndroidToolchain/bin/$($Target.Value)"
+              $AndroidCxx = "$AndroidCc++"
               $Config += @(
                 "",
                 "[target.$($Target.Key)]",
                 "cc = `"$AndroidCc`"",
+                "cxx = `"$AndroidCxx`"",
                 "ar = `"$AndroidAr`"",
                 "ranlib = `"$AndroidRanlib`"",
                 "linker = `"$AndroidCc`""
