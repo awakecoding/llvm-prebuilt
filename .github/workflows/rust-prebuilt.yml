@@ -169,7 +169,7 @@ jobs:
 
       - name: Clone required Rust submodules
         shell: pwsh
-        run: git -C rust submodule update --init --depth 1 src/tools/cargo library/backtrace src/llvm-project src/doc/book src/doc/reference
+        run: git -C rust submodule update --init --depth 1 src/tools/cargo src/tools/rustc-perf library/backtrace src/llvm-project src/doc/book src/doc/reference
 
       - name: Configure Android NDK
         if: runner.os == 'Linux'
