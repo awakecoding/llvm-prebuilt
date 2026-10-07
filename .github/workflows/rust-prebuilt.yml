@@ -236,6 +236,11 @@ jobs:
             )
           }
           $QuotedTargets = ($RustTargets | ForEach-Object { "`"$_`"" }) -join ", "
+          $RustTools = @("cargo", "clippy", "rustdoc", "rustfmt", "rust-analyzer")
+          if ($IsMacOS) {
+            $RustTools += "analysis"
+          }
+          $QuotedTools = ($RustTools | ForEach-Object { "`"$_`"" }) -join ", "
 
           $Config = @(
             "profile = `"dist`"",
@@ -247,7 +252,7 @@ jobs:
             "build-dir = `"$RustBuildDir`"",
             "docs = false",
             "extended = true",
-            "tools = [`"cargo`", `"clippy`", `"rustdoc`", `"rustfmt`", `"rust-analyzer`"]",
+            "tools = [$QuotedTools]",
             "submodules = false",
             "",
             "[llvm]",
