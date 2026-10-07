@@ -105,6 +105,15 @@ jobs:
           }
 
           $LlvmBinPath = Join-Path $LlvmPrefix "bin"
+          foreach ($Tool in @("llc", "lli", "opt")) {
+            $Source = Join-Path $LlvmBinPath "llvm-$Tool$ExeSuffix"
+            $Destination = Join-Path $LlvmBinPath "$Tool$ExeSuffix"
+            if (-Not (Test-Path $Source)) {
+              throw "Renamed LLVM tool was not found at $Source"
+            }
+            Copy-Item -LiteralPath $Source -Destination $Destination -Force
+          }
+
           echo "LLVM_CONFIG=$LlvmConfig" >> $Env:GITHUB_ENV
           echo "$LlvmBinPath" >> $Env:GITHUB_PATH
 
