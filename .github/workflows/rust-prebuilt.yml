@@ -56,6 +56,42 @@ jobs:
           } elseif ($IsLinux) {
             sudo apt-get update
             sudo apt-get install -y g++-aarch64-linux-gnu xz-utils
+          } elseif ($IsWindows) {
+            $VcpkgRootDir = Join-Path $Env:RUNNER_TEMP "vcpkg"
+            git clone --depth 1 --branch 2025.10.17 https://github.com/microsoft/vcpkg.git $VcpkgRootDir
+            if ($LASTEXITCODE -ne 0) {
+              throw "Failed to clone vcpkg"
+            }
+
+            & (Join-Path $VcpkgRootDir "bootstrap-vcpkg.bat")
+            if ($LASTEXITCODE -ne 0) {
+              throw "Failed to bootstrap vcpkg"
+            }
+
+            $Vcpkg = Join-Path $VcpkgRootDir "vcpkg.exe"
+            & $Vcpkg install "zlib:x64-windows-static-release" "libxml2[core]:x64-windows-static-release"
+            if ($LASTEXITCODE -ne 0) {
+              throw "Failed to install LLVM's Windows link dependencies"
+            }
+
+            $ZlibLibrary = Join-Path $VcpkgRootDir "packages/zlib_x64-windows-static-release/lib/zlib.lib"
+            $LibXml2Library = Join-Path $VcpkgRootDir "packages/libxml2_x64-windows-static-release/lib/libxml2.lib"
+            foreach ($Library in @($ZlibLibrary, $LibXml2Library)) {
+              if (-Not (Test-Path $Library)) {
+                throw "Expected LLVM link dependency was not found at $Library"
+              }
+            }
+
+            $LibraryPaths = Get-ChildItem (Join-Path $VcpkgRootDir "packages") -Directory |
+              Where-Object { $_.Name -like "*_x64-windows-static-release" } |
+              ForEach-Object { Join-Path $_.FullName "lib" } |
+              Where-Object { Test-Path $_ }
+            $LinkLibraryPaths = @($LibraryPaths)
+            if ($Env:LIB) {
+              $LinkLibraryPaths += $Env:LIB
+            }
+            $Env:LIB = $LinkLibraryPaths -join ";"
+            echo "LIB=$Env:LIB" >> $Env:GITHUB_ENV
           }
 
       - name: Resolve LLVM workflow run
