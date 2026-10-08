@@ -56,6 +56,43 @@ jobs:
           } elseif ($IsLinux) {
             sudo apt-get update
             sudo apt-get install -y g++-aarch64-linux-gnu xz-utils
+          } elseif ($IsWindows) {
+            $VcpkgRootDir = Join-Path $Env:RUNNER_TEMP "vcpkg"
+            git clone --depth 1 --branch 2025.10.17 https://github.com/microsoft/vcpkg.git $VcpkgRootDir
+            if ($LASTEXITCODE -ne 0) {
+              throw "Failed to clone vcpkg"
+            }
+
+            & (Join-Path $VcpkgRootDir "bootstrap-vcpkg.bat")
+            if ($LASTEXITCODE -ne 0) {
+              throw "Failed to bootstrap vcpkg"
+            }
+
+            $Vcpkg = Join-Path $VcpkgRootDir "vcpkg.exe"
+            & $Vcpkg install "zlib:x64-windows-static-release" "libxml2[core]:x64-windows-static-release"
+            if ($LASTEXITCODE -ne 0) {
+              throw "Failed to install LLVM's Windows link dependencies"
+            }
+
+            $ZlibLibrary = Join-Path $VcpkgRootDir "packages/zlib_x64-windows-static-release/lib/zlib.lib"
+            $LibXml2Library = Join-Path $VcpkgRootDir "packages/libxml2_x64-windows-static-release/lib/libxml2.lib"
+            foreach ($Library in @($ZlibLibrary, $LibXml2Library)) {
+              if (-Not (Test-Path $Library)) {
+                throw "Expected LLVM link dependency was not found at $Library"
+              }
+            }
+            Copy-Item -LiteralPath $LibXml2Library -Destination (Join-Path (Split-Path $LibXml2Library) "xml2.lib")
+
+            $LibraryPaths = Get-ChildItem (Join-Path $VcpkgRootDir "packages") -Directory |
+              Where-Object { $_.Name -like "*_x64-windows-static-release" } |
+              ForEach-Object { Join-Path $_.FullName "lib" } |
+              Where-Object { Test-Path $_ }
+            $LinkLibraryPaths = @($LibraryPaths)
+            if ($Env:LIB) {
+              $LinkLibraryPaths += $Env:LIB
+            }
+            $Env:LIB = $LinkLibraryPaths -join ";"
+            echo "LIB=$Env:LIB" >> $Env:GITHUB_ENV
           }
 
       - name: Resolve LLVM workflow run
@@ -105,6 +142,15 @@ jobs:
           }
 
           $LlvmBinPath = Join-Path $LlvmPrefix "bin"
+          foreach ($Tool in @("llc", "lli", "opt")) {
+            $Source = Join-Path $LlvmBinPath "llvm-$Tool$ExeSuffix"
+            $Destination = Join-Path $LlvmBinPath "$Tool$ExeSuffix"
+            if (-Not (Test-Path $Source)) {
+              throw "Renamed LLVM tool was not found at $Source"
+            }
+            Copy-Item -LiteralPath $Source -Destination $Destination -Force
+          }
+
           echo "LLVM_CONFIG=$LlvmConfig" >> $Env:GITHUB_ENV
           echo "$LlvmBinPath" >> $Env:GITHUB_PATH
 
@@ -123,7 +169,7 @@ jobs:
 
       - name: Clone required Rust submodules
         shell: pwsh
-        run: git -C rust submodule update --init --depth 1 src/tools/cargo library/backtrace
+        run: git -C rust submodule update --init --depth 1 src/tools/cargo src/tools/rustc-perf library/backtrace src/llvm-project src/doc/book src/doc/reference
 
       - name: Configure Android NDK
         if: runner.os == 'Linux'
@@ -190,6 +236,11 @@ jobs:
             )
           }
           $QuotedTargets = ($RustTargets | ForEach-Object { "`"$_`"" }) -join ", "
+          $RustTools = @("cargo", "clippy", "rustdoc", "rustfmt", "rust-analyzer")
+          if ($IsMacOS -or $IsWindows) {
+            $RustTools += "analysis"
+          }
+          $QuotedTools = ($RustTools | ForEach-Object { "`"$_`"" }) -join ", "
 
           $Config = @(
             "profile = `"dist`"",
@@ -201,7 +252,7 @@ jobs:
             "build-dir = `"$RustBuildDir`"",
             "docs = false",
             "extended = true",
-            "tools = [`"cargo`", `"clippy`", `"rustdoc`", `"rustfmt`", `"rust-analyzer`"]",
+            "tools = [$QuotedTools]",
             "submodules = false",
             "",
             "[llvm]",
@@ -249,10 +300,12 @@ jobs:
 
             foreach ($Target in $AndroidTargets.GetEnumerator()) {
               $AndroidCc = "$AndroidToolchain/bin/$($Target.Value)"
+              $AndroidCxx = "$AndroidCc++"
               $Config += @(
                 "",
                 "[target.$($Target.Key)]",
                 "cc = `"$AndroidCc`"",
+                "cxx = `"$AndroidCxx`"",
                 "ar = `"$AndroidAr`"",
                 "ranlib = `"$AndroidRanlib`"",
                 "linker = `"$AndroidCc`""
